@@ -199,42 +199,7 @@ form {
   border-radius: 6px;
 }
 
-/* === Resumo Flutuante === */
-#resumo-flutuante {
-  position: fixed;
-  top: 80px;
-  right: 20px;
-  width: 350px;
-  max-height: 80vh;
-  overflow-y: auto;
-  background: #6c757d;
-  color: #000000;
-  border-radius: 10px;
-  padding: 15px;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  display: none;
-  opacity: 0;
-  transition: opacity 0.6s ease, box-shadow 0.5s ease;
-  z-index: 9999; /* ESSENCIAL */
-  }
 
-#resumo-flutuante.glow {
-  box-shadow: 0 0 15px 5px rgba(255, 193, 7, 0.7);
-}
-
-#resumo-flutuante h5 {
-  color: #fff;
-  font-weight: 600;
-}
-
-#resumo-flutuante table th,
-#resumo-flutuante table td {
-  padding: 5px 8px;
-  font-size: 14px;
-  background: rgba(255, 255, 255, 0.05);
-  color: #fff;
-}
 
 /* === Botões de Modo === */
 .modo-btn {
@@ -395,6 +360,9 @@ footer {
     transform: translateY(0);
   }
 }
+
+
+
 /* ==========================================================
    FIM DO ESTILO GERAL DO SISTEMA
    ========================================================== */

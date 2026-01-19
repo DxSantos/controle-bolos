@@ -25,6 +25,8 @@ if (!verificaPermissao('movimentacao')) {
 // ----- PERMISSÕES DE USUÁRIO BOTÕES -----
 $canSaida = verificaPermissao('saidas'); // 🔹 checa se o usuário pode mexer em saídas
 $canEntrada = verificaPermissao('entradas'); // 🔹 checa se o usuário pode mexer em entradas
+$guardaValores = verificaPermissao('guardar_valores'); // 🔹 checa se o usuário pode guardar valores temporariamente
+$salvarBanco = verificaPermissao('salvar_banco'); // 🔹 checa se o usuário pode salvar no banco
 
 
 // ----- LISTAR TIPOS E PRODUTOS -----
@@ -69,8 +71,13 @@ foreach ($tipos as $tipo) {
                 </div>
 
                 <div class="mt-3 d-flex gap-2">
+                    <?php if ($guardaValores): ?>
                     <button type="button" id="btn-guardar" class="btn btn-warning">Guardar Valores</button>
+                    <?php endif; ?>
+
+                    <?php if ($salvarBanco): ?>
                     <button type="submit" class="btn btn-success">Salvar no Banco</button>
+                    <?php endif; ?>
                 </div>
 
             </div>
