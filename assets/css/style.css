@@ -216,8 +216,8 @@ form {
   display: none;
   opacity: 0;
   transition: opacity 0.6s ease, box-shadow 0.5s ease;
-  z-index: 1000;
-}
+  z-index: 9999; /* ESSENCIAL */
+  }
 
 #resumo-flutuante.glow {
   box-shadow: 0 0 15px 5px rgba(255, 193, 7, 0.7);

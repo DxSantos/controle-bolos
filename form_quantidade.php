@@ -1,7 +1,7 @@
 <?php
 require 'config.php';
 require 'includes/verifica_permissao.php';
-include 'includes/header.php';
+//include 'includes/header.php';
 
 // Inicia sessão
 if (session_status() === PHP_SESSION_NONE) {
@@ -51,7 +51,7 @@ foreach ($tipos as $tipo) {
 
 
         <form id="form_quantidade" method="POST" action="salvar_banco.php">
-            
+
 
             <h3 class="mb-4">Controle de Estoque - Entrada / Saída</h3>
 
@@ -137,148 +137,190 @@ foreach ($tipos as $tipo) {
 
         </form>
 
-        <!-- Resumo Flutuante -->
-        <div id="resumo-flutuante">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <h5 id="resumo-titulo" class="mb-0">Resumo Guardado - Vendas</h5>
-                <button type="button" id="fechar-resumo" class="btn btn-sm btn-light">Fechar</button>
-            </div>
-            <table class="table table-sm table-bordered mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>Produto</th>
-                        <th>Quantidade</th>
-                    </tr>
-                </thead>
-                <tbody id="resumo-body"></tbody>
-            </table>
-        </div>
+
 
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-const form = document.getElementById('form_quantidade');
-const btnGuardar = document.getElementById('btn-guardar');
-const resumo = document.getElementById('resumo-flutuante');
-const resumoBody = document.getElementById('resumo-body');
-const tipoRegistroInput = document.getElementById('tipo_registro');
-const cardHeaders = document.querySelectorAll('.card-header-tipo');
-const btnVerValores = document.getElementById('btn-ver-valores');
-const alertaSalvo = document.getElementById('alerta-salvo');
-const fecharResumoBtn = document.getElementById('fechar-resumo');
+document.addEventListener('DOMContentLoaded', async () => {
 
-let tipoAtual = 'saida';
+    const form = document.getElementById('form_quantidade');
+    const btnGuardar = document.getElementById('btn-guardar');
+    const btnVerValores = document.getElementById('btn-ver-valores');
+    const resumoBody = document.getElementById('resumo-body');
+    const tipoRegistroInput = document.getElementById('tipo_registro');
+    const cardHeaders = document.querySelectorAll('.card-header-tipo');
+    const alertaSalvo = document.getElementById('alerta-salvo');
 
-// ================= CORES =================
-function atualizarCores() {
-    let cor = '#dc3545';
-    if (tipoAtual === 'entrada') cor = '#0d6efd';
+    const modalResumo = new bootstrap.Modal(
+        document.getElementById('modalResumo')
+    );
 
-    cardHeaders.forEach(h => h.style.backgroundColor = cor);
-    resumo.style.backgroundColor = cor;
-    resumo.style.color = '#fff';
-}
+    let tipoAtual = 'saida';
 
-document.body.onload = async () => {
+    // ================= CORES =================
+    function atualizarCores() {
+        let cor = tipoAtual === 'entrada' ? '#0d6efd' : '#dc3545';
+        cardHeaders.forEach(h => h.style.backgroundColor = cor);
+    }
+
     atualizarCores();
     await carregarValoresGuardados(tipoAtual);
-};
 
-// ================= BOTÕES MODO =================
-document.querySelectorAll('.modo-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-        document.querySelectorAll('.modo-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
+    // ================= MODOS =================
+    document.querySelectorAll('.modo-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            document.querySelectorAll('.modo-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
 
-        tipoAtual = btn.dataset.modo === 'entradas' ? 'entrada' : 'saida';
-        tipoRegistroInput.value = tipoAtual;
+            tipoAtual = btn.dataset.modo === 'entradas' ? 'entrada' : 'saida';
+            tipoRegistroInput.value = tipoAtual;
 
-        atualizarCores();
-        await carregarValoresGuardados(tipoAtual);
+            atualizarCores();
+            await carregarValoresGuardados(tipoAtual);
+        });
     });
-});
 
-// ================= + / - =================
-document.querySelectorAll('.btn-plus').forEach(btn => {
-    btn.onclick = () => {
-        const input = btn.previousElementSibling;
-        input.value = parseInt(input.value || 0) + 1;
-    };
-});
+    // ================= + / - =================
+    document.querySelectorAll('.btn-plus').forEach(btn => {
+        btn.onclick = () => {
+            const input = btn.previousElementSibling;
+            input.value = parseInt(input.value || 0) + 1;
+        };
+    });
 
-document.querySelectorAll('.btn-minus').forEach(btn => {
-    btn.onclick = () => {
-        const input = btn.nextElementSibling;
-        input.value = Math.max(0, parseInt(input.value || 0) - 1);
-    };
-});
+    document.querySelectorAll('.btn-minus').forEach(btn => {
+        btn.onclick = () => {
+            const input = btn.nextElementSibling;
+            input.value = Math.max(0, parseInt(input.value || 0) - 1);
+        };
+    });
 
-// ================= COLETAR =================
-function coletarValoresDaTela() {
-    const valores = {};
-    document.querySelectorAll('input[name^="quantidade"]').forEach(input => {
-        const v = parseInt(input.value || 0);
-        if (v > 0) {
-            const id = input.name.match(/\[(\d+)\]/)[1];
-            valores[id] = v;
+    // ================= COLETAR =================
+    function coletarValoresDaTela() {
+        const valores = {};
+        document.querySelectorAll('input[name^="quantidade"]').forEach(input => {
+            const v = parseInt(input.value || 0);
+            if (v > 0) {
+                const id = input.name.match(/\[(\d+)\]/)[1];
+                valores[id] = v;
+            }
+        });
+        return valores;
+    }
+
+    // ================= GUARDAR =================
+    btnGuardar.addEventListener('click', async () => {
+        const valores = coletarValoresDaTela();
+        if (!Object.keys(valores).length) return;
+
+        const res = await fetch('guardar_valores.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ quantidades: valores, tipo: tipoAtual })
+        });
+
+        const json = await res.json();
+        if (json.status !== 'ok') {
+            alert(json.msg);
+            return;
         }
-    });
-    return valores;
-}
 
-// ================= GUARDAR =================
-btnGuardar.addEventListener('click', async () => {
-    const valores = coletarValoresDaTela();
-    if (!Object.keys(valores).length) return;
-
-    const res = await fetch('guardar_valores.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ quantidades: valores, tipo: tipoAtual })
+        montarResumo(valores);
+        btnVerValores.style.display = 'inline-block';
+        modalResumo.show();
     });
 
-    const json = await res.json();
-    if (json.status !== 'ok') {
-        alert(json.msg);
-        return;
-    }
-
-    resumoBody.innerHTML = '';
-    for (const id in valores) {
-        const nome = document.querySelector(`input[name="quantidade[${id}]"]`)
-            .closest('.produto-item')
-            .querySelector('span').childNodes[0].textContent.trim();
-
-        resumoBody.innerHTML += `<tr><td>${nome}</td><td>${valores[id]}</td></tr>`;
-    }
-
-    resumo.style.display = 'block';
-    btnVerValores.style.display = 'inline-block';
-});
-
-// ================= CARREGAR =================
-async function carregarValoresGuardados(tipo) {
-    const res = await fetch(`get_valores_guardados.php?tipo=${tipo}`);
-    const json = await res.json();
-
-    document.querySelectorAll('input[name^="quantidade"]').forEach(i => i.value = 0);
-
-    if (json.status === 'ok') {
-        for (const id in json.valores) {
+    // ================= RESUMO =================
+    function montarResumo(valores) {
+        resumoBody.innerHTML = '';
+        for (const id in valores) {
             const input = document.querySelector(`input[name="quantidade[${id}]"]`);
-            if (input) input.value = json.valores[id];
+            if (!input) continue;
+
+            const nome = input.closest('.produto-item')
+                .querySelector('span').childNodes[0].textContent.trim();
+
+            resumoBody.innerHTML += `
+                <tr>
+                    <td>${nome}</td>
+                    <td>${valores[id]}</td>
+                </tr>
+            `;
         }
     }
-}
 
-// ================= SUBMIT =================
-// 🔥 NÃO limpa aqui — o salvar_banco.php já faz isso
-form.addEventListener('submit', () => {
-    alertaSalvo.style.display = 'block';
-    alertaSalvo.classList.add('show');
+    // ================= CARREGAR =================
+    async function carregarValoresGuardados(tipo) {
+        const res = await fetch(`get_valores_guardados.php?tipo=${tipo}`);
+        const json = await res.json();
+
+        resumoBody.innerHTML = '';
+        btnVerValores.style.display = 'none';
+
+        document.querySelectorAll('input[name^="quantidade"]').forEach(i => i.value = 0);
+
+        if (json.status === 'ok' && Object.keys(json.valores).length > 0) {
+            btnVerValores.style.display = 'inline-block';
+            montarResumo(json.valores);
+
+            for (const id in json.valores) {
+                const input = document.querySelector(`input[name="quantidade[${id}]"]`);
+                if (input) input.value = json.valores[id];
+            }
+        }
+    }
+
+    // ================= BOTÃO VALORES GUARDADOS =================
+    btnVerValores.addEventListener('click', () => {
+        modalResumo.show();
+    });
+
+    // ================= SUBMIT =================
+    form.addEventListener('submit', () => {
+        alertaSalvo.style.display = 'block';
+        alertaSalvo.classList.add('show');
+    });
+
 });
 </script>
+
+
+    <!-- Modal Resumo -->
+     
+    <div class="modal fade" id="modalResumo" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalResumoTitulo">
+                        Resumo de Valores Guardados
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+                    <table class="table table-bordered table-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Produto</th>
+                                <th>Quantidade</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resumo-body"></tbody>
+                    </table>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">
+                        Fechar
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
 
 
 

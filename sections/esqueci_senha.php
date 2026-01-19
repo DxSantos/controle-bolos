@@ -1,4 +1,5 @@
 <?php
+date_default_timezone_set('America/Sao_Paulo');
 require '../config.php';
 require '../vendor/autoload.php';
 
@@ -21,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ->execute([$user['id'], $token, $expira]);
 
         // Envia e-mail com link de redefinição
-        $link = "http://localhost/Controle_lojas/sections/redefinir_senha.php?token=$token";
+        $link = "http://localhost/Controle_bolosCopia/sections/redefinir_senha.php?token=$token";
 
         $mail = new PHPMailer(true);
 
@@ -121,7 +122,7 @@ body {
 
     <div class='footer'>
         © " . date('Y') . " Controle de Bolos. Todos os direitos reservados.<br>
-        <a href='http://localhost/Controle_bolos/' style='color:#0d6efd;'>Acesse o sistema</a>
+        <a href='http://localhost/Controle_bolosCopia/' style='color:#0d6efd;'>Acesse o sistema</a>
     </div>
 </div>
 </body>

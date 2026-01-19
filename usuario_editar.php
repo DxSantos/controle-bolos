@@ -31,7 +31,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt = $pdo->prepare("UPDATE usuarios SET nome = ?, email = ?, perfil_id = ?, ativo = ? WHERE id = ?");
     $stmt->execute([$nome, $email, $perfil_id, $ativo, $id]);
 
-    header("Location: usuarios_lista.php?msg=Usuário atualizado com sucesso!");
+    // Mensagem de sucesso e redirecionamento
+    $_SESSION['msg'] = "Usuário atualizado com sucesso!";
+    $_SESSION['msg_tipo'] = 'success';
+    header("Location: usuarios_lista.php");
     exit;
 }
 ?>

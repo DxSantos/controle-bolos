@@ -73,8 +73,8 @@ $lojas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         <div class="mb-3">
             <label class="form-label">Nome da Loja:</label>
-            <input type="text" name="nome" value="<?= htmlspecialchars($nome_edit) ?>" 
-                   class="form-control text-uppercase" required>
+            <input type="text" name="nome" value="<?= htmlspecialchars($nome_edit) ?>"
+                class="form-control text-uppercase" required>
         </div>
 
         <button type="submit" class="btn btn-success"><?= $edit ? 'Atualizar' : 'Salvar' ?></button>
@@ -89,12 +89,12 @@ $lojas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         <!-- Barra de Pesquisa -->
         <form method="GET" class="search-bar d-flex align-items-center gap-2 mb-2" role="search">
-            <input type="text" name="busca" class="form-control" 
-                   placeholder="Pesquisar por nome..." value="<?= htmlspecialchars($busca) ?>" 
-                   style="max-width:250px;">
+            <input type="text" name="busca" class="form-control"
+                placeholder="Pesquisar por nome..." value="<?= htmlspecialchars($busca) ?>"
+                style="max-width:250px;">
             <div class="form-check">
-                <input type="checkbox" name="mostrar_inativas" id="mostrar_inativas" 
-                       class="form-check-input" <?= $mostrarInativas ? 'checked' : '' ?>>
+                <input type="checkbox" name="mostrar_inativas" id="mostrar_inativas"
+                    class="form-check-input" <?= $mostrarInativas ? 'checked' : '' ?>>
                 <label for="mostrar_inativas" class="form-check-label">Mostrar Inativas</label>
             </div>
             <button class="btn btn-primary" type="submit">Buscar</button>
@@ -133,7 +133,9 @@ $lojas = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         </tr>
                     <?php endforeach; ?>
                     <?php if (empty($lojas)): ?>
-                        <tr><td colspan="4" class="text-center text-muted">Nenhuma loja encontrada.</td></tr>
+                        <tr>
+                            <td colspan="4" class="text-center text-muted">Nenhuma loja encontrada.</td>
+                        </tr>
                     <?php endif; ?>
                 </tbody>
             </table>
