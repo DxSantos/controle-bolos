@@ -1,7 +1,8 @@
 <?php
+date_default_timezone_set('America/Sao_Paulo');
 require 'config.php';
 require 'includes/verifica_permissao.php';
-//include 'includes/header.php';
+include 'includes/header.php';
 
 // Inicia sessão
 if (session_status() === PHP_SESSION_NONE) {
