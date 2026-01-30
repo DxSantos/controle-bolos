@@ -2,19 +2,20 @@
 require 'config.php';
 require 'includes/verifica_permissao.php';
 include 'includes/header.php';
+
 date_default_timezone_set('America/Sao_Paulo');
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// 🔹 Verifica login
+// 🔐 Login
 if (empty($_SESSION['usuario_id'])) {
     header('Location: login.php');
     exit;
 }
 
-// 🔹 Verifica permissão "inventario"
+// 🔐 Permissão
 if (!verificaPermissao('inventario')) {
     echo "<div class='alert alert-danger m-4 text-center'>
             🚫 Você não tem permissão para acessar esta página.
@@ -23,160 +24,160 @@ if (!verificaPermissao('inventario')) {
     exit;
 }
 
-// Filtro opcional por tipo
-$tipo_id = !empty($_GET['tipo_id']) ? (int)$_GET['tipo_id'] : null;
+/* =======================
+   FILTROS
+======================= */
+$tipo_mov   = $_GET['tipo_mov'] ?? '';
+$produto_id = $_GET['produto_id'] ?? '';
+$data_ini   = $_GET['data_ini'] ?? '';
+$data_fim   = $_GET['data_fim'] ?? '';
 
-// Busca tipos
-$tipos = $pdo->query("SELECT * FROM tipos ORDER BY nome")->fetchAll(PDO::FETCH_ASSOC);
+// Produtos
+$produtos = $pdo->query("
+    SELECT id, nome 
+    FROM produtos 
+    ORDER BY nome
+")->fetchAll(PDO::FETCH_ASSOC);
 
-// Busca produtos com saldo atual
-$sql = "SELECT p.id, p.nome, p.tipo, COALESCE(sp.saldo,0) AS saldo
-        FROM produtos p
-        LEFT JOIN saldo_produtos sp ON sp.produto_id = p.id";
-if ($tipo_id) $sql .= " WHERE p.tipo = :tipo_id";
-$sql .= " ORDER BY p.tipo, p.nome";
+/* =======================
+   CONSULTA UNIFICADA
+======================= */
+$sql = "
+    SELECT 
+        e.data AS data_mov,
+        'ENTRADA' AS tipo_mov,
+        p.nome AS produto,
+        e.quantidade
+    FROM controle_entrada e
+    JOIN produtos p ON p.id = e.produto_id
+
+    UNION ALL
+
+    SELECT 
+        s.data AS data_mov,
+        'SAÍDA' AS tipo_mov,
+        p.nome AS produto,
+        s.quantidade
+    FROM controle_saida s
+    JOIN produtos p ON p.id = s.produto_id
+";
+
+$condicoes = [];
+$params = [];
+
+// Filtros externos
+if ($tipo_mov) {
+    $condicoes[] = "tipo_mov = :tipo_mov";
+    $params[':tipo_mov'] = strtoupper($tipo_mov);
+}
+
+if ($produto_id) {
+    $condicoes[] = "produto_id = :produto_id";
+    $params[':produto_id'] = $produto_id;
+}
+
+if ($data_ini) {
+    $condicoes[] = "DATE(data_mov) >= :data_ini";
+    $params[':data_ini'] = $data_ini;
+}
+
+if ($data_fim) {
+    $condicoes[] = "DATE(data_mov) <= :data_fim";
+    $params[':data_fim'] = $data_fim;
+}
+
+// Aplica filtros
+if ($condicoes) {
+    $sql = "
+        SELECT * FROM (
+            $sql
+        ) AS movimentos
+        WHERE " . implode(' AND ', $condicoes);
+}
+
+$sql .= " ORDER BY data_mov DESC";
 
 $stmt = $pdo->prepare($sql);
-if ($tipo_id) $stmt->bindValue(':tipo_id', $tipo_id, PDO::PARAM_INT);
-$stmt->execute();
-$produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// Agrupa produtos por tipo
-$produtos_por_tipo = [];
-foreach ($produtos as $p) {
-    $produtos_por_tipo[$p['tipo']][] = $p;
-}
+$stmt->execute($params);
+$movimentos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
-    <div class="container py-4">
-        <h3 class="mb-4">Relatório por Tipo</h3>
+<div class="container py-4">
+    <h3 class="mb-4">📊 Relatório de Movimentação</h3>
 
-        <form method="GET" class="row g-2 mb-3">
-            <div class="col-md-3">
-                <label>Tipo</label>
-                <select name="tipo_id" class="form-control">
-                    <option value="">Todos</option>
-                    <?php foreach ($tipos as $tipo): ?>
-                        <option value="<?= $tipo['id'] ?>" <?= ($tipo_id == $tipo['id']) ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($tipo['nome']) ?>
-                        </option>
+    <!-- 🔎 FILTROS -->
+    <form method="GET" class="row g-2 mb-4">
+        <div class="col-md-3">
+            <label>Tipo</label>
+            <select name="tipo_mov" class="form-control">
+                <option value="">Todos</option>
+                <option value="entrada" <?= $tipo_mov == 'entrada' ? 'selected' : '' ?>>Entrada</option>
+                <option value="saida" <?= $tipo_mov == 'saida' ? 'selected' : '' ?>>Saída</option>
+            </select>
+        </div>
+
+        <div class="col-md-3">
+            <label>Produto</label>
+            <select name="produto_id" class="form-control">
+                <option value="">Todos</option>
+                <?php foreach ($produtos as $p): ?>
+                    <option value="<?= $p['id'] ?>" <?= $produto_id == $p['id'] ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($p['nome']) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+
+        <div class="col-md-2">
+            <label>Data inicial</label>
+            <input type="date" name="data_ini" value="<?= $data_ini ?>" class="form-control">
+        </div>
+
+        <div class="col-md-2">
+            <label>Data final</label>
+            <input type="date" name="data_fim" value="<?= $data_fim ?>" class="form-control">
+        </div>
+
+        <div class="col-md-2 d-flex align-items-end gap-2">
+            <button class="btn btn-primary w-100">Filtrar</button>
+        </div>
+    </form>
+
+    <!-- 📋 TABELA -->
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>Data</th>
+                    <th>Tipo</th>
+                    <th>Produto</th>
+                    <th class="text-end">Quantidade</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php if ($movimentos): ?>
+                    <?php foreach ($movimentos as $m): ?>
+                        <tr>
+                            <td><?= date('d/m/Y H:i', strtotime($m['data_mov'])) ?></td>
+                            <td>
+                                <span class="badge <?= $m['tipo_mov'] == 'ENTRADA' ? 'bg-success' : 'bg-danger' ?>">
+                                    <?= $m['tipo_mov'] ?>
+                                </span>
+                            </td>
+                            <td><?= htmlspecialchars($m['produto']) ?></td>
+                            <td class="text-end fw-bold"><?= number_format($m['quantidade'], 0, ',', '.') ?></td>
+                        </tr>
                     <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="col-md-3 d-flex align-items-end gap-2">
-                <button type="submit" class="btn btn-primary">Filtrar</button>
-                <a href="export_excel.php?tipo_id=<?= $tipo_id ?>" class="btn btn-success">Exportar Excel</a>
-                <!-- Botão que abre o modal -->
-                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#pdfModal">
-                    Exportar PDF
-                </button>
-
-
-            </div>
-        </form>
-
-        <div class="row">
-            <?php foreach ($tipos as $tipo):
-                $produtos_tipo = $produtos_por_tipo[$tipo['id']] ?? [];
-                if (!$produtos_tipo) continue;
-            ?>
-                <div class="col-md-6">
-                    <div class="card card-tipo">
-                        <div class="card-header" style="background-color:#007bff;">
-                            <?= htmlspecialchars($tipo['nome']) ?>
-                        </div>
-                        <div class="card-body">
-                            <table class="table table-sm mb-0">
-                                <thead>
-                                    <tr>
-                                        <th>Produto</th>
-                                        <th>Saldo</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($produtos_tipo as $p):
-                                        $saldoClass = $p['saldo'] > 0 ? 'saldo-positivo' : ($p['saldo'] == 0 ? 'saldo-zero' : 'saldo-negativo');
-                                    ?>
-                                        <tr>
-                                            <td><?= htmlspecialchars($p['nome']) ?></td>
-                                            <td class="<?= $saldoClass ?>"><?= $p['saldo'] ?></td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            <?php endforeach; ?>
-        </div>
+                <?php else: ?>
+                    <tr>
+                        <td colspan="4" class="text-center text-muted">
+                            Nenhuma movimentação encontrada
+                        </td>
+                    </tr>
+                <?php endif; ?>
+            </tbody>
+        </table>
     </div>
-    <!-- Modal de exportação PDF -->
-    <div class="modal fade" id="pdfModal" tabindex="-1" aria-labelledby="pdfModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content shadow-lg border-0">
-                <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title" id="pdfModalLabel">Gerar Relatório em PDF</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
-                </div>
+</div>
 
-                <div class="modal-body text-center">
-                    <!-- Conteúdo inicial -->
-                    <div id="pdfModalContent">
-                        <p>Deseja exportar o relatório atual filtrado como PDF?</p>
-                        <p class="text-muted small">Os dados serão gerados conforme o filtro selecionado.</p>
-                    </div>
-
-                    <!-- Área de carregamento oculta -->
-                    <div id="loadingArea" class="d-none">
-                        <div class="spinner-border text-danger mb-3" style="width: 3rem; height: 3rem;" role="status">
-                            <span class="visually-hidden">Gerando...</span>
-                        </div>
-                        <p class="fw-bold text-danger">Gerando PDF, aguarde...</p>
-                    </div>
-                </div>
-
-                <div class="modal-footer justify-content-center">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button id="confirmExportBtn" type="button" class="btn btn-danger">
-                        Confirmar Exportação
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Script de controle do modal -->
-    <script>
-        document.getElementById('confirmExportBtn').addEventListener('click', function() {
-            const modalContent = document.getElementById('pdfModalContent');
-            const loadingArea = document.getElementById('loadingArea');
-
-            // Mostra o spinner
-            modalContent.classList.add('d-none');
-            loadingArea.classList.remove('d-none');
-
-            // Captura o valor do filtro selecionado
-            const tipoSelect = document.getElementById('tipoFiltro'); // <-- ID do seu <select>
-            const tipoSelecionado = tipoSelect ? tipoSelect.value : '';
-
-            // Espera 1.5 segundos e abre o PDF
-            setTimeout(() => {
-                // Fecha o modal
-                const modal = bootstrap.Modal.getInstance(document.getElementById('pdfModal'));
-                modal.hide();
-
-                // Abre o PDF com base no filtro
-                const url = `export_pdf.php?tipo_id=${encodeURIComponent(tipoSelecionado)}`;
-                window.open(url, '_blank');
-
-                // Restaura o modal
-                modalContent.classList.remove('d-none');
-                loadingArea.classList.add('d-none');
-            }, 1500);
-        });
-    </script>
-
-      <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-
-</html>
+<?php include 'includes/footer.php'; ?>

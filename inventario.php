@@ -31,7 +31,7 @@ foreach ($tipos as $tipo) {
         SELECT p.id, p.nome, IFNULL(s.saldo, 0) AS saldo_atual
         FROM produtos p
         LEFT JOIN saldo_produtos s ON s.produto_id = p.id
-        WHERE p.tipo = ?
+        WHERE p.tipo_id = ?
         ORDER BY p.nome
     ");
     $stmt->execute([$tipo['id']]);

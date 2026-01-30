@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => '__root__',
-        'pretty_version' => '1.0.0+no-version-set',
-        'version' => '1.0.0.0',
-        'reference' => null,
+        'pretty_version' => 'dev-main',
+        'version' => 'dev-main',
+        'reference' => '15dc1fabf781527a02fbb40234e797f0ead8e1e5',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -11,18 +11,18 @@
     ),
     'versions' => array(
         '__root__' => array(
-            'pretty_version' => '1.0.0+no-version-set',
-            'version' => '1.0.0.0',
-            'reference' => null,
+            'pretty_version' => 'dev-main',
+            'version' => 'dev-main',
+            'reference' => '15dc1fabf781527a02fbb40234e797f0ead8e1e5',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
             'dev_requirement' => false,
         ),
         'dompdf/dompdf' => array(
-            'pretty_version' => 'v3.1.3',
-            'version' => '3.1.3.0',
-            'reference' => 'baed300e4fb8226359c04395518059a136e2a2e2',
+            'pretty_version' => 'v3.1.4',
+            'version' => '3.1.4.0',
+            'reference' => 'db712c90c5b9868df3600e64e68da62e78a34623',
             'type' => 'library',
             'install_path' => __DIR__ . '/../dompdf/dompdf',
             'aliases' => array(),

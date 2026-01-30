@@ -2,39 +2,74 @@
 session_start();
 require 'config.php';
 
-// Recebe dados do formulário
-$id   = isset($_POST['id']) ? (int)$_POST['id'] : 0;
-$nome = strtoupper(trim($_POST['nome']));
-$tipo = (int)$_POST['tipo'];
+$id         = isset($_POST['id']) ? (int)$_POST['id'] : 0;
+$nome       = mb_strtoupper(trim($_POST['nome']), 'UTF-8');
+$tipo_id    = (int) $_POST['tipo_id'];
+$subtipo_id = !empty($_POST['subtipo_id']) ? (int) $_POST['subtipo_id'] : null;
 
-// ----- VALIDAÇÃO DE DUPLICIDADE -----
+/* ===== VALIDAÇÃO DE DUPLICIDADE (nome + tipo + subtipo) ===== */
+
 if ($id > 0) {
-    // Edição: exclui o próprio registro
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM produtos WHERE UPPER(nome) = ? AND id != ?");
-    $stmt->execute([$nome, $id]);
+    // Edição
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*) 
+        FROM produtos 
+        WHERE UPPER(nome) = ?
+          AND tipo_id = ?
+          AND (
+                (subtipo_id IS NULL AND ? IS NULL)
+                OR subtipo_id = ?
+              )
+          AND id != ?
+    ");
+    $stmt->execute([
+        $nome,
+        $tipo_id,
+        $subtipo_id,
+        $subtipo_id,
+        $id
+    ]);
 } else {
     // Novo cadastro
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM produtos WHERE UPPER(nome) = ?");
-    $stmt->execute([$nome]);
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*) 
+        FROM produtos 
+        WHERE UPPER(nome) = ?
+          AND tipo_id = ?
+          AND (
+                (subtipo_id IS NULL AND ? IS NULL)
+                OR subtipo_id = ?
+              )
+    ");
+    $stmt->execute([
+        $nome,
+        $tipo_id,
+        $subtipo_id,
+        $subtipo_id
+    ]);
 }
 
 if ($stmt->fetchColumn() > 0) {
-    $_SESSION['msg'] = "Erro: Já existe um produto com este nome!";
+    $_SESSION['msg'] = 'Erro: Já existe um produto com este nome, tipo e subtipo!';
     $_SESSION['msg_tipo'] = 'danger';
     header("Location: produto_cadastro.php" . ($id > 0 ? "?editar=$id" : ""));
     exit;
 }
 
-// ----- SALVAR OU ATUALIZAR -----
+
+/* ===== SALVAR ===== */
 if ($id > 0) {
-    // Atualizar
-    $stmt = $pdo->prepare("UPDATE produtos SET nome = ?, tipo = ? WHERE id = ?");
-    $stmt->execute([$nome, $tipo, $id]);
+    $sql = "UPDATE produtos 
+            SET nome = ?, tipo_id = ?, subtipo_id = ?
+            WHERE id = ?";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$nome, $tipo_id, $subtipo_id, $id]);
     $_SESSION['msg'] = "Produto atualizado com sucesso!";
 } else {
-    // Inserir novo
-    $stmt = $pdo->prepare("INSERT INTO produtos (nome, tipo) VALUES (?, ?)");
-    $stmt->execute([$nome, $tipo]);
+    $sql = "INSERT INTO produtos (nome, tipo_id, subtipo_id)
+            VALUES (?, ?, ?)";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$nome, $tipo_id, $subtipo_id]);
     $_SESSION['msg'] = "Produto cadastrado com sucesso!";
 }
 

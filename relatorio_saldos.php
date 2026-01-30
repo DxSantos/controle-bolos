@@ -1,194 +1,150 @@
 <?php
 require 'config.php';
-include 'includes/header.php';
 require 'includes/verifica_permissao.php';
-date_default_timezone_set('America/Sao_Paulo');
+include 'includes/header.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+
 if (empty($_SESSION['usuario_id'])) {
     header('Location: login.php');
     exit;
 }
 
-// Bloqueia se o usuário não tiver permissão
-if (!verificaPermissao('saldos')) {
+if (!verificaPermissao('relatorios')) {
     echo "<div class='alert alert-danger m-4 text-center'>
-            🚫 Você não tem permissão para acessar esta página.
+            🚫 Você não tem permissão para acessar este relatório.
           </div>";
     include 'includes/footer.php';
     exit;
 }
 
-// ====== FILTROS ======
-$data_inicio = $_GET['data_inicio'] ?? '';
-$data_fim = $_GET['data_fim'] ?? '';
-$loja_id = $_GET['loja_id'] ?? '';
-$produto_id = $_GET['produto_id'] ?? '';
-$tipo_id = $_GET['tipo_id'] ?? '';
+// =================== FILTROS ===================
+$tipoFiltro = isset($_GET['tipo_id']) && $_GET['tipo_id'] !== ''
+    ? (int)$_GET['tipo_id']
+    : null;
 
-// ====== LISTAS DE FILTRO ======
-$lojas = $pdo->query("SELECT id, nome FROM lojas ORDER BY nome")->fetchAll(PDO::FETCH_ASSOC);
-$tipos = $pdo->query("SELECT id, nome FROM tipos ORDER BY nome")->fetchAll(PDO::FETCH_ASSOC);
-$produtos = $pdo->query("SELECT id, nome FROM produtos ORDER BY nome")->fetchAll(PDO::FETCH_ASSOC);
+// =================== BUSCA TIPOS ===================
+$tipos = $pdo->query("
+    SELECT id, nome
+    FROM tipos
+    ORDER BY nome
+")->fetchAll(PDO::FETCH_ASSOC);
 
-// ====== CONDIÇÕES DE FILTRO ======
-$where = "WHERE 1=1";
+// =================== BUSCA SALDOS ===================
+$sql = "
+    SELECT
+        p.id,
+        p.nome AS produto,
+        p.tipo_id,
+        p.subtipo_id,
+        t.nome AS tipo_nome,
+        st.nome AS subtipo_nome,
+        COALESCE(sp.saldo, 0) AS saldo
+    FROM produtos p
+    INNER JOIN tipos t ON t.id = p.tipo_id
+    LEFT JOIN subtipos st ON st.id = p.subtipo_id
+    LEFT JOIN saldo_produtos sp ON sp.produto_id = p.id
+";
+
 $params = [];
 
-if ($loja_id) {
-    $where .= " AND l.id = :loja_id";
-    $params[':loja_id'] = $loja_id;
-}
-if ($produto_id) {
-    $where .= " AND p.id = :produto_id";
-    $params[':produto_id'] = $produto_id;
-}
-if ($tipo_id) {
-    $where .= " AND t.id = :tipo_id";
-    $params[':tipo_id'] = $tipo_id;
-}
-if ($data_inicio && $data_fim) {
-    $where .= " AND DATE(m.data) BETWEEN :data_inicio AND :data_fim";
-    $params[':data_inicio'] = $data_inicio;
-    $params[':data_fim'] = $data_fim;
+if ($tipoFiltro) {
+    $sql .= " WHERE p.tipo_id = :tipo_id";
+    $params[':tipo_id'] = $tipoFiltro;
 }
 
-// ====== QUERY PRINCIPAL ======
-$sql = "
-SELECT 
-    DATE(m.data) AS data,
-    l.nome AS loja_nome,
-    p.nome AS produto_nome,
-    t.nome AS tipo_nome,
-    COALESCE(SUM(CASE WHEN m.tipo = 'inventario' THEN m.quantidade END), 0) AS inventario,
-    COALESCE(SUM(CASE WHEN m.tipo = 'entrada' THEN m.quantidade END), 0) AS entrada,
-    COALESCE(SUM(CASE WHEN m.tipo = 'saida' THEN m.quantidade END), 0) AS saida,
-    (
-        COALESCE(SUM(CASE WHEN m.tipo = 'inventario' THEN m.quantidade END), 0)
-        + COALESCE(SUM(CASE WHEN m.tipo = 'entrada' THEN m.quantidade END), 0)
-        - COALESCE(SUM(CASE WHEN m.tipo = 'saida' THEN m.quantidade END), 0)
-    ) AS saldo
-FROM (
-    SELECT 'inventario' AS tipo, il.produto_id, il.loja_id, il.saldo_inventario AS quantidade, il.data_inventario AS data 
-    FROM inventario_log il
-
-    UNION ALL
-
-    SELECT 'entrada' AS tipo, ce.produto_id, ce.loja_id, ce.quantidade, ce.data 
-    FROM controle_entrada ce
-
-    UNION ALL
-
-    SELECT 'saida' AS tipo, cs.produto_id, cs.loja_id, cs.quantidade, cs.data 
-    FROM controle_saida cs
-) m
-INNER JOIN produtos p ON m.produto_id = p.id
-INNER JOIN tipos t ON p.tipo = t.id
-INNER JOIN lojas l ON m.loja_id = l.id
-$where
-GROUP BY DATE(m.data), l.id, p.id
-ORDER BY DATE(m.data) ASC
-";
+$sql .= " ORDER BY t.nome, st.nome, p.nome";
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $dados = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// =================== AGRUPAMENTO ===================
+$relatorio = [];
+
+foreach ($dados as $row) {
+    $tipo = $row['tipo_nome'];
+    $subtipo = $row['subtipo_nome'] ?? 'Sem Subtipo';
+
+    $relatorio[$tipo][$subtipo][] = [
+        'produto' => $row['produto'],
+        'saldo'   => $row['saldo']
+    ];
+}
 ?>
 
 <div class="container py-4">
-    <h3 class="mb-4">📋 Relatório de Movimentações (Inventário, Entradas, Saídas e Saldo)</h3>
 
-    <!-- FILTROS -->
-    <form method="GET" class="row g-3 mb-4 border p-3 bg-light rounded shadow-sm">
-        <div class="col-md-3">
-            <label class="form-label">Data Início</label>
-            <input type="date" name="data_inicio" value="<?= htmlspecialchars($data_inicio) ?>" class="form-control">
-        </div>
-        <div class="col-md-3">
-            <label class="form-label">Data Fim</label>
-            <input type="date" name="data_fim" value="<?= htmlspecialchars($data_fim) ?>" class="form-control">
-        </div>
-        <div class="col-md-3">
-            <label class="form-label">Loja</label>
-            <select name="loja_id" class="form-select">
-                <option value="">Todas</option>
-                <?php foreach ($lojas as $l): ?>
-                    <option value="<?= $l['id'] ?>" <?= ($l['id'] == $loja_id) ? 'selected' : '' ?>>
-                        <?= htmlspecialchars($l['nome']) ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-        <div class="col-md-3">
+    <h3 class="mb-4">📊 Relatório de Saldos por Tipo</h3>
+
+    <!-- FILTRO -->
+    <form method="GET" class="row g-2 mb-4">
+        <div class="col-md-4">
             <label class="form-label">Tipo</label>
             <select name="tipo_id" class="form-select">
-                <option value="">Todos</option>
+                <option value="">Todos os tipos</option>
                 <?php foreach ($tipos as $t): ?>
-                    <option value="<?= $t['id'] ?>" <?= ($t['id'] == $tipo_id) ? 'selected' : '' ?>>
+                    <option value="<?= $t['id'] ?>" <?= ($tipoFiltro == $t['id']) ? 'selected' : '' ?>>
                         <?= htmlspecialchars($t['nome']) ?>
                     </option>
                 <?php endforeach; ?>
             </select>
         </div>
-        <div class="col-md-4">
-            <label class="form-label">Produto</label>
-            <select name="produto_id" class="form-select">
-                <option value="">Todos</option>
-                <?php foreach ($produtos as $p): ?>
-                    <option value="<?= $p['id'] ?>" <?= ($p['id'] == $produto_id) ? 'selected' : '' ?>>
-                        <?= htmlspecialchars($p['nome']) ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-        <div class="col-md-2 align-self-end">
-            <button type="submit" class="btn btn-primary w-100">Filtrar</button>
-        </div>
-        <div class="col-md-2 align-self-end">
-            <a href="relatorio_movimentos.php" class="btn btn-secondary w-100">Limpar</a>
+        <div class="col-md-3 d-flex align-items-end gap-2">
+            <button class="btn btn-primary">Filtrar</button>
+            <a href="relatorio_saldos.php" class="btn btn-secondary">Limpar</a>
         </div>
     </form>
 
-    <!-- RESULTADOS -->
-    <div class="card shadow-sm mb-4">
-        <div class="card-body">
-            <?php if ($dados): ?>
-                <div class="table-responsive">
-                    <table class="table table-striped table-hover align-middle">
-                        <thead class="table-primary">
-                            <tr>
-                                <th>Data</th>
-                                <th>Loja</th>
-                                <th>Produto</th>
-                                <th>Tipo</th>
-                                <th>Inventário</th>
-                                <th>Entrada</th>
-                                <th>Saída</th>
-                                <th class="text-success">Saldo</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($dados as $row): ?>
-                                <tr>
-                                    <td><?= date('d/m/Y', strtotime($row['data'])) ?></td>
-                                    <td><?= htmlspecialchars($row['loja_nome']) ?></td>
-                                    <td><?= htmlspecialchars($row['produto_nome']) ?></td>
-                                    <td><?= htmlspecialchars($row['tipo_nome']) ?></td>
-                                    <td><?= (int)$row['inventario'] ?></td>
-                                    <td><?= (int)$row['entrada'] ?></td>
-                                    <td><?= (int)$row['saida'] ?></td>
-                                    <td><strong class="text-success"><?= (int)$row['saldo'] ?></strong></td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
+    <!-- CARDS -->
+    <div class="row">
+        <?php if (empty($relatorio)): ?>
+            <div class="col-12">
+                <div class="alert alert-warning text-center">
+                    Nenhum dado encontrado.
                 </div>
-            <?php else: ?>
-                <div class="alert alert-info text-center">Nenhum registro encontrado com os filtros aplicados.</div>
-            <?php endif; ?>
-        </div>
+            </div>
+        <?php endif; ?>
+
+        <?php foreach ($relatorio as $tipo => $subtipos): ?>
+            <div class="col-md-6 mb-4">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header bg-primary text-white fw-bold">
+                        <?= htmlspecialchars($tipo) ?>
+                    </div>
+                    <div class="card-body">
+
+                        <?php foreach ($subtipos as $subtipo => $produtos): ?>
+                            <h6 class="mt-3 text-secondary">
+                                <?= htmlspecialchars($subtipo) ?>
+                            </h6>
+
+                            <table class="table table-sm table-bordered mb-3">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Produto</th>
+                                        <th width="100">Saldo</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($produtos as $p): ?>
+                                        <tr>
+                                            <td><?= htmlspecialchars($p['produto']) ?></td>
+                                            <td class="text-end fw-bold">
+                                                <?= $p['saldo'] ?>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        <?php endforeach; ?>
+
+                    </div>
+                </div>
+            </div>
+        <?php endforeach; ?>
     </div>
 </div>
 

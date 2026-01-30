@@ -62,6 +62,7 @@ $pagina_atual = basename($_SERVER['PHP_SELF']);
                     <ul class="dropdown-menu" aria-labelledby="menuCadastro">
                         <li><a class="dropdown-item" href="produto_cadastro.php">Produtos</a></li>
                         <li><a class="dropdown-item" href="tipo_cadastro.php">Tipos</a></li>
+                        <li><a class="dropdown-item" href="subtipo_cadastro.php">Subtipos</a></li>
                         <li><a class="dropdown-item" href="loja_cadastro.php">Lojas</a></li>
                     </ul>
                 </li>

@@ -36,7 +36,7 @@ $tipos = $pdo->query("SELECT * FROM tipos ORDER BY nome")->fetchAll(PDO::FETCH_A
 // Agrupa produtos por tipo
 $produtos_por_tipo = [];
 foreach ($tipos as $tipo) {
-    $stmt = $pdo->prepare("SELECT * FROM produtos WHERE tipo = ? ORDER BY nome");
+    $stmt = $pdo->prepare("SELECT * FROM produtos WHERE tipo_id = ? ORDER BY nome");
     $stmt->execute([$tipo['id']]);
     $produtos_por_tipo[$tipo['id']] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
@@ -120,6 +120,15 @@ foreach ($tipos as $tipo) {
                                             ?>
                                             <span>
                                                 <?= htmlspecialchars($produto['nome']) ?>
+                                                <?php if (!empty($produto['subtipo_id'])): ?>
+                                                    <?php
+                                                    // Buscar nome do subtipo
+                                                    $stmtSubtipo = $pdo->prepare("SELECT nome FROM subtipos WHERE id = ?");
+                                                    $stmtSubtipo->execute([$produto['subtipo_id']]);
+                                                    $subtipo_nome = $stmtSubtipo->fetchColumn();
+                                                    ?>
+                                                    <em class="text-muted"> (<?= htmlspecialchars($subtipo_nome) ?>)</em>
+                                                <?php endif; ?>
                                                 <span class="badge bg-light text-dark">(Saldo: <?= htmlspecialchars($saldo_texto) ?>)</span>
                                             </span>
 
