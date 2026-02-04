@@ -178,6 +178,10 @@ form {
   border-bottom: none;
 }
 
+.produto-card{
+    width:100%;
+}
+
 /* === Controle de Quantidade === */
 .quantidade-control {
   display: flex;

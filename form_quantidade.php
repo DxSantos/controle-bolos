@@ -73,11 +73,11 @@ foreach ($tipos as $tipo) {
 
                 <div class="mt-3 d-flex gap-2">
                     <?php if ($guardaValores): ?>
-                    <button type="button" id="btn-guardar" class="btn btn-warning">Guardar Valores</button>
+                        <button type="button" id="btn-guardar" class="btn btn-warning">Guardar Valores</button>
                     <?php endif; ?>
 
                     <?php if ($salvarBanco): ?>
-                    <button type="submit" class="btn btn-success">Salvar no Banco</button>
+                        <button type="submit" class="btn btn-success">Salvar no Banco</button>
                     <?php endif; ?>
                 </div>
 
@@ -100,51 +100,167 @@ foreach ($tipos as $tipo) {
 
             <div class="row">
                 <?php foreach ($tipos as $tipo): ?>
-                    <div class="col-md-6">
+                    <div class="col">
                         <div class="produto-card card">
                             <div class="card-header text-white card-header-tipo" style="background-color: #dc3545;">
                                 <?= htmlspecialchars($tipo['nome']) ?>
                             </div>
                             <div class="card-body">
+
                                 <?php
                                 $produtos = $produtos_por_tipo[$tipo['id']] ?? [];
-                                if ($produtos):
-                                    foreach ($produtos as $produto): ?>
-                                        <div class="produto-item">
-                                            <?php
-                                            // Buscar saldo atual do produto
-                                            $stmtSaldo = $pdo->prepare("SELECT saldo FROM saldo_produtos WHERE produto_id = ?");
-                                            $stmtSaldo->execute([$produto['id']]);
-                                            $saldo = $stmtSaldo->fetchColumn();
-                                            $saldo_texto = is_null($saldo) ? '0' : $saldo;
-                                            ?>
-                                            <span>
-                                                <?= htmlspecialchars($produto['nome']) ?>
-                                                <?php if (!empty($produto['subtipo_id'])): ?>
-                                                    <?php
-                                                    // Buscar nome do subtipo
-                                                    $stmtSubtipo = $pdo->prepare("SELECT nome FROM subtipos WHERE id = ?");
-                                                    $stmtSubtipo->execute([$produto['subtipo_id']]);
-                                                    $subtipo_nome = $stmtSubtipo->fetchColumn();
-                                                    ?>
-                                                    <em class="text-muted"> (<?= htmlspecialchars($subtipo_nome) ?>)</em>
-                                                <?php endif; ?>
-                                                <span class="badge bg-light text-dark">(Saldo: <?= htmlspecialchars($saldo_texto) ?>)</span>
-                                            </span>
+
+                                $dados = [];
+$subtipos = [];
+
+// Monta estrutura
+foreach ($produtos as $p) {
+
+    $subtipo = 'SEM SUBTIPO';
+
+    if (!empty($p['subtipo_id'])) {
+        $st = $pdo->prepare("SELECT nome FROM subtipos WHERE id=?");
+        $st->execute([$p['subtipo_id']]);
+        $subtipo = $st->fetchColumn() ?: 'SEM SUBTIPO';
+    }
+
+    // Guarda subtipo existente
+    $subtipos[$subtipo] = true;
+
+    // Agrupa produto
+    $dados[$p['nome']][$subtipo] = [
+        'id' => $p['id']
+    ];
+}
+
+// Ordem desejada
+$ordemPadrao = ['MINI', 'P', 'M', 'G', 'SEM SUBTIPO'];
+
+uksort($subtipos, function ($a, $b) use ($ordemPadrao) {
+
+    $pa = array_search($a, $ordemPadrao);
+    $pb = array_search($b, $ordemPadrao);
+
+    if ($pa === false) return 1;
+    if ($pb === false) return -1;
+
+    return $pa <=> $pb;
+});
 
 
+                                if ($dados):
 
-                                            <div class="quantidade-control">
-                                                <button type="button" class="btn btn-outline-secondary btn-minus">-</button>
-                                                <input type="number" name="quantidade[<?= $produto['id'] ?>]" value="0" min="0">
-                                                <button type="button" class="btn btn-outline-secondary btn-plus">+</button>
-                                            </div>
-                                        </div>
-                                    <?php endforeach;
-                                else: ?>
+                                    // Coleta SOMENTE subtipos que existem neste TIPO
+                                    $subtipos = [];
+
+                                    foreach ($produtos as $p) {
+
+                                        if (!empty($p['subtipo_id'])) {
+
+                                            $st = $pdo->prepare("SELECT nome FROM subtipos WHERE id=?");
+                                            $st->execute([$p['subtipo_id']]);
+                                            $nomeSub = $st->fetchColumn();
+
+                                            if ($nomeSub) {
+                                                $subtipos[$nomeSub] = true;
+                                            }
+                                        }
+                                    }
+
+                                    // Se existir produto sem subtipo
+                                    foreach ($produtos as $p) {
+                                        if (empty($p['subtipo_id'])) {
+                                            $subtipos['SEM SUBTIPO'] = true;
+                                            break;
+                                        }
+                                    }
+
+
+                                    // ORDEM PERSONALIZADA
+                                    $ordemPadrao = ['MINI', 'P', 'M', 'G'];
+
+                                    uksort($subtipos, function ($a, $b) use ($ordemPadrao) {
+
+                                        $pa = array_search($a, $ordemPadrao);
+                                        $pb = array_search($b, $ordemPadrao);
+
+                                        if ($pa === false) return 1;
+                                        if ($pb === false) return -1;
+
+                                        return $pa <=> $pb;
+                                    });
+
+                                ?>
+
+                                    <table class="table table-bordered table-sm">
+
+                                        <thead>
+                                            <tr>
+                                                <th>Produto</th>
+                                                <?php foreach ($subtipos as $s => $x): ?>
+                                                    <th class="text-center"><?= htmlspecialchars($s) ?></th>
+                                                <?php endforeach; ?>
+                                            </tr>
+                                        </thead>
+
+                                        <tbody>
+
+<?php foreach ($dados as $produtoNome => $subs): ?>
+<tr>
+
+    <td><strong><?= htmlspecialchars($produtoNome) ?></strong></td>
+
+    <?php foreach ($subtipos as $subtipo => $x): ?>
+        <td class="text-center">
+
+            <?php if (isset($subs[$subtipo])):
+
+                $pid = $subs[$subtipo]['id'];
+
+                $stSaldo = $pdo->prepare(
+                    "SELECT saldo FROM saldo_produtos WHERE produto_id=?"
+                );
+                $stSaldo->execute([$pid]);
+                $saldo = $stSaldo->fetchColumn() ?? 0;
+            ?>
+
+                <small class="text-muted">Saldo: <?= $saldo ?></small>
+
+                <div class="quantidade-control">
+
+                    <button type="button" class="btn btn-outline-secondary btn-minus">-</button>
+
+                    <input type="number"
+                           name="quantidade[<?= $pid ?>]"
+                           value="0"
+                           min="0">
+
+                    <button type="button" class="btn btn-outline-secondary btn-plus">+</button>
+
+                </div>
+
+            <?php else: ?>
+                <!-- célula vazia -->
+            <?php endif; ?>
+
+        </td>
+    <?php endforeach; ?>
+
+</tr>
+<?php endforeach; ?>
+
+</tbody>
+
+
+                                    </table>
+
+                                <?php else: ?>
                                     <p class="text-muted">Nenhum produto cadastrado neste tipo.</p>
                                 <?php endif; ?>
+
                             </div>
+
+
                         </div>
                     </div>
                 <?php endforeach; ?>
@@ -158,154 +274,163 @@ foreach ($tipos as $tipo) {
 
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-document.addEventListener('DOMContentLoaded', async () => {
+        document.addEventListener('DOMContentLoaded', async () => {
 
-    const form = document.getElementById('form_quantidade');
-    const btnGuardar = document.getElementById('btn-guardar');
-    const btnVerValores = document.getElementById('btn-ver-valores');
-    const resumoBody = document.getElementById('resumo-body');
-    const tipoRegistroInput = document.getElementById('tipo_registro');
-    const cardHeaders = document.querySelectorAll('.card-header-tipo');
-    const alertaSalvo = document.getElementById('alerta-salvo');
+            const form = document.getElementById('form_quantidade');
+            const btnGuardar = document.getElementById('btn-guardar');
+            const btnVerValores = document.getElementById('btn-ver-valores');
+            const resumoBody = document.getElementById('resumo-body');
+            const tipoRegistroInput = document.getElementById('tipo_registro');
+            const cardHeaders = document.querySelectorAll('.card-header-tipo');
+            const alertaSalvo = document.getElementById('alerta-salvo');
 
-    const modalResumo = new bootstrap.Modal(
-        document.getElementById('modalResumo')
-    );
+            const modalResumo = new bootstrap.Modal(
+                document.getElementById('modalResumo')
+            );
 
-    let tipoAtual = 'saida';
+            let tipoAtual = 'saida';
 
-    // ================= CORES =================
-    function atualizarCores() {
-        let cor = tipoAtual === 'entrada' ? '#0d6efd' : '#dc3545';
-        cardHeaders.forEach(h => h.style.backgroundColor = cor);
-    }
-
-    atualizarCores();
-    await carregarValoresGuardados(tipoAtual);
-
-    // ================= MODOS =================
-    document.querySelectorAll('.modo-btn').forEach(btn => {
-        btn.addEventListener('click', async () => {
-            document.querySelectorAll('.modo-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-
-            tipoAtual = btn.dataset.modo === 'entradas' ? 'entrada' : 'saida';
-            tipoRegistroInput.value = tipoAtual;
+            // ================= CORES =================
+            function atualizarCores() {
+                let cor = tipoAtual === 'entrada' ? '#0d6efd' : '#dc3545';
+                cardHeaders.forEach(h => h.style.backgroundColor = cor);
+            }
 
             atualizarCores();
             await carregarValoresGuardados(tipoAtual);
-        });
-    });
 
-    // ================= + / - =================
-    document.querySelectorAll('.btn-plus').forEach(btn => {
-        btn.onclick = () => {
-            const input = btn.previousElementSibling;
-            input.value = parseInt(input.value || 0) + 1;
-        };
-    });
+            // ================= MODOS =================
+            document.querySelectorAll('.modo-btn').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    document.querySelectorAll('.modo-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
 
-    document.querySelectorAll('.btn-minus').forEach(btn => {
-        btn.onclick = () => {
-            const input = btn.nextElementSibling;
-            input.value = Math.max(0, parseInt(input.value || 0) - 1);
-        };
-    });
+                    tipoAtual = btn.dataset.modo === 'entradas' ? 'entrada' : 'saida';
+                    tipoRegistroInput.value = tipoAtual;
 
-    // ================= COLETAR =================
-    function coletarValoresDaTela() {
-        const valores = {};
-        document.querySelectorAll('input[name^="quantidade"]').forEach(input => {
-            const v = parseInt(input.value || 0);
-            if (v > 0) {
-                const id = input.name.match(/\[(\d+)\]/)[1];
-                valores[id] = v;
+                    atualizarCores();
+                    await carregarValoresGuardados(tipoAtual);
+                });
+            });
+
+            // ================= + / - =================
+            document.querySelectorAll('.btn-plus').forEach(btn => {
+                btn.onclick = () => {
+                    const input = btn.previousElementSibling;
+                    input.value = parseInt(input.value || 0) + 1;
+                };
+            });
+
+            document.querySelectorAll('.btn-minus').forEach(btn => {
+                btn.onclick = () => {
+                    const input = btn.nextElementSibling;
+                    input.value = Math.max(0, parseInt(input.value || 0) - 1);
+                };
+            });
+
+            // ================= COLETAR =================
+            function coletarValoresDaTela() {
+                const valores = {};
+                document.querySelectorAll('input[name^="quantidade"]').forEach(input => {
+                    const v = parseInt(input.value || 0);
+                    if (v > 0) {
+                        const id = input.name.match(/\[(\d+)\]/)[1];
+                        valores[id] = v;
+                    }
+                });
+                return valores;
             }
-        });
-        return valores;
-    }
 
-    // ================= GUARDAR =================
-    btnGuardar.addEventListener('click', async () => {
-        const valores = coletarValoresDaTela();
-        if (!Object.keys(valores).length) return;
+            // ================= GUARDAR =================
+            btnGuardar.addEventListener('click', async () => {
+                const valores = coletarValoresDaTela();
+                if (!Object.keys(valores).length) return;
 
-        const res = await fetch('guardar_valores.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ quantidades: valores, tipo: tipoAtual })
-        });
+                const res = await fetch('guardar_valores.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        quantidades: valores,
+                        tipo: tipoAtual
+                    })
+                });
 
-        const json = await res.json();
-        if (json.status !== 'ok') {
-            alert(json.msg);
-            return;
-        }
+                const json = await res.json();
+                if (json.status !== 'ok') {
+                    alert(json.msg);
+                    return;
+                }
 
-        montarResumo(valores);
-        btnVerValores.style.display = 'inline-block';
-        modalResumo.show();
-    });
+                montarResumo(valores);
+                btnVerValores.style.display = 'inline-block';
+                modalResumo.show();
+            });
 
-    // ================= RESUMO =================
-    function montarResumo(valores) {
-        resumoBody.innerHTML = '';
-        for (const id in valores) {
-            const input = document.querySelector(`input[name="quantidade[${id}]"]`);
-            if (!input) continue;
+            // ================= RESUMO =================
+            function montarResumo(valores) {
+                resumoBody.innerHTML = '';
 
-            const nome = input.closest('.produto-item')
-                .querySelector('span').childNodes[0].textContent.trim();
+                for (const id in valores) {
 
-            resumoBody.innerHTML += `
-                <tr>
-                    <td>${nome}</td>
-                    <td>${valores[id]}</td>
-                </tr>
-            `;
-        }
-    }
+                    const input = document.querySelector(`input[name="quantidade[${id}]"]`);
+                    if (!input) continue;
 
-    // ================= CARREGAR =================
-    async function carregarValoresGuardados(tipo) {
-        const res = await fetch(`get_valores_guardados.php?tipo=${tipo}`);
-        const json = await res.json();
+                    // Pega o nome do produto pela primeira coluna da linha
+                    const linha = input.closest('tr');
+                    const nomeProduto = linha.querySelector('td').innerText.trim();
 
-        resumoBody.innerHTML = '';
-        btnVerValores.style.display = 'none';
-
-        document.querySelectorAll('input[name^="quantidade"]').forEach(i => i.value = 0);
-
-        if (json.status === 'ok' && Object.keys(json.valores).length > 0) {
-            btnVerValores.style.display = 'inline-block';
-            montarResumo(json.valores);
-
-            for (const id in json.valores) {
-                const input = document.querySelector(`input[name="quantidade[${id}]"]`);
-                if (input) input.value = json.valores[id];
+                    resumoBody.innerHTML += `
+            <tr>
+                <td>${nomeProduto}</td>
+                <td>${valores[id]}</td>
+            </tr>
+        `;
+                }
             }
-        }
-    }
 
-    // ================= BOTÃO VALORES GUARDADOS =================
-    btnVerValores.addEventListener('click', () => {
-        modalResumo.show();
-    });
 
-    // ================= SUBMIT =================
-    form.addEventListener('submit', () => {
-        alertaSalvo.style.display = 'block';
-        alertaSalvo.classList.add('show');
-    });
+            // ================= CARREGAR =================
+            async function carregarValoresGuardados(tipo) {
+                const res = await fetch(`get_valores_guardados.php?tipo=${tipo}`);
+                const json = await res.json();
 
-});
-</script>
+                resumoBody.innerHTML = '';
+                btnVerValores.style.display = 'none';
+
+                document.querySelectorAll('input[name^="quantidade"]').forEach(i => i.value = 0);
+
+                if (json.status === 'ok' && Object.keys(json.valores).length > 0) {
+                    btnVerValores.style.display = 'inline-block';
+                    montarResumo(json.valores);
+
+                    for (const id in json.valores) {
+                        const input = document.querySelector(`input[name="quantidade[${id}]"]`);
+                        if (input) input.value = json.valores[id];
+                    }
+                }
+            }
+
+            // ================= BOTÃO VALORES GUARDADOS =================
+            btnVerValores.addEventListener('click', () => {
+                modalResumo.show();
+            });
+
+            // ================= SUBMIT =================
+            form.addEventListener('submit', () => {
+                alertaSalvo.style.display = 'block';
+                alertaSalvo.classList.add('show');
+            });
+
+        });
+    </script>
 
 
     <!-- Modal Resumo -->
-     
+
     <div class="modal fade" id="modalResumo" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content">
