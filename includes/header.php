@@ -89,6 +89,7 @@ $pagina_atual = basename($_SERVER['PHP_SELF']);
                         <li><a class="dropdown-item" href="relatorio_saldos.php">Relatório de Saldos</a></li>
                         <li><a class="dropdown-item" href="relatorio_dashboard.php">Relatório Dashboard</a></li>
                         <li><a class="dropdown-item" href="relatorio_analitico.php">Relatório Analítico</a></li>
+                        <li><a class="dropdown-item" href="relatorio_movimentos.php">Relatório Movimentação</a></li>
                     </ul>
                 </li>
                 

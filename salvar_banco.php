@@ -1,4 +1,5 @@
 <?php
+date_default_timezone_set('America/Sao_Paulo');
 require 'config.php';
 require 'includes/atualizar_saldo_produto.php';
 
@@ -16,6 +17,7 @@ if (!in_array($tipo, ['entrada', 'saida'])) {
     header('Location: form_quantidade.php?msg=tipo');
     exit;
 }
+$data = date('Y-m-d H:i:s');
 
 // Busca valores guardados
 $stmt = $pdo->prepare("
@@ -42,12 +44,13 @@ try {
         $stmtInsert = $pdo->prepare("
             INSERT INTO {$tabelaDestino}
             (usuario_id, produto_id, quantidade, data)
-            VALUES (?, ?, ?, NOW())
+            VALUES (?, ?, ?, ?)
         ");
         $stmtInsert->execute([
             $usuario_id,
             $item['produto_id'],
-            $item['quantidade']
+            $item['quantidade'],
+            $data
         ]);
 
         atualizarSaldoProduto($pdo, $item['produto_id']);
