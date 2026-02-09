@@ -37,7 +37,7 @@ $pagina_atual = basename($_SERVER['PHP_SELF']);
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="assets/css/style.css" rel="stylesheet">
-    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
@@ -80,7 +80,7 @@ $pagina_atual = basename($_SERVER['PHP_SELF']);
                 <!-- Relatórios -->
 
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle <?= in_array($pagina_atual, ['relatorio_movimentacao.php','relatorio_saldos.php','relatorio_dashboard.php','relatorio_analitico.php']) ? 'active' : '' ?>"
+                    <a class="nav-link dropdown-toggle <?= in_array($pagina_atual, ['relatorio_movimentacao.php','relatorio_saldos.php','relatorio_dashboard.php','relatorio_analitico.php','relatorio_cards.php']) ? 'active' : '' ?>"
                        href="#" id="menuRelatorios" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         Relatórios
                     </a>
@@ -90,6 +90,7 @@ $pagina_atual = basename($_SERVER['PHP_SELF']);
                         <li><a class="dropdown-item" href="relatorio_dashboard.php">Relatório Dashboard</a></li>
                         <li><a class="dropdown-item" href="relatorio_analitico.php">Relatório Analítico</a></li>
                         <li><a class="dropdown-item" href="relatorio_movimentos.php">Relatório Movimentação</a></li>
+                        <li><a class="dropdown-item" href="relatorio_cards.php">Relatório Gráfico (Cards)</a></li>
                     </ul>
                 </li>
                 
