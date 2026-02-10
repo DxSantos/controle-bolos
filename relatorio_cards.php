@@ -18,6 +18,26 @@ $tipos = $pdo->query("
 
     <h3 class="mb-3" id="tgrafi">📦 Entradas x Saídas</h3>
 
+    <form id="filtroDatas" class="row g-2 mb-4">
+
+    <div class="col-md-3">
+        <label class="form-label">Data inicial</label>
+        <input type="date" id="data_inicio" class="form-control">
+    </div>
+
+    <div class="col-md-3">
+        <label class="form-label">Data final</label>
+        <input type="date" id="data_fim" class="form-control">
+    </div>
+
+    <div class="col-md-3 d-flex align-items-end">
+        <button type="button" class="btn btn-secondary w-100"
+            onclick="limparDatas()">Limpar datas</button>
+    </div>
+
+</form>
+
+
     <div class="row g-3">
 
         <?php foreach ($tipos as $tipo): ?>
@@ -83,77 +103,78 @@ $tipos = $pdo->query("
 </div>
 
 <script>
-    let chart = null;
+let chart = null;
 
-    document.querySelectorAll('.produto-item').forEach(item => {
-        item.addEventListener('click', () => {
+function limparDatas() {
+    document.getElementById('data_inicio').value = '';
+    document.getElementById('data_fim').value = '';
+}
 
-            const produtoId = item.dataset.id;
-            const nome = item.dataset.nome;
+document.querySelectorAll('.produto-item').forEach(item => {
+    item.addEventListener('click', () => {
 
-            document.getElementById('tituloProduto').innerText = nome;
+        const produtoId = item.dataset.id;
+        const nome = item.dataset.nome;
 
-            fetch(`dados_grafico_produto.php?produto_id=${produtoId}`)
-                .then(res => res.json())
-                .then(dados => {
+        const dataInicio = document.getElementById('data_inicio').value;
+        const dataFim = document.getElementById('data_fim').value;
 
-                    const ctx = document.getElementById('graficoProduto').getContext('2d');
+        document.getElementById('tituloProduto').innerText = nome;
 
-                    if (chart) {
-                        chart.destroy();
+        let url = `dados_grafico_produto.php?produto_id=${produtoId}`;
+
+        if (dataInicio) url += `&data_inicio=${dataInicio}`;
+        if (dataFim) url += `&data_fim=${dataFim}`;
+
+        fetch(url)
+            .then(res => res.json())
+            .then(dados => {
+
+                const ctx = document.getElementById('graficoProduto').getContext('2d');
+
+                if (chart) chart.destroy();
+
+                chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: dados.datas,
+                        datasets: [
+                            {
+                                label: 'Entradas',
+                                data: dados.entradas,
+                                borderColor: 'blue',
+                                tension: 0.3
+                            },
+                            {
+                                label: 'Saídas',
+                                data: dados.saidas,
+                                borderColor: 'red',
+                                tension: 0.3
+                            }
+                        ]
+                    },
+                    options: {
+                        interaction: {
+                            mode: 'index',
+                            intersect: false
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { stepSize: 1 }
+                            }
+                        }
                     }
-
-                    chart = new Chart(ctx, {
-                        type: 'line',
-                        data: {
-                            labels: dados.datas,
-                            datasets: [{
-                                    label: 'Entradas',
-                                    data: dados.entradas,
-                                    borderColor: 'blue',
-                                    tension: 0.3,
-                                    fill: false,
-                                },
-                                {
-                                    label: 'Saídas',
-                                    data: dados.saidas,
-                                    borderColor: 'red',
-                                    tension: 0.3,
-                                    fill: false,
-                                }
-                            ]
-                        },
-                        options: {
-                            animations: {
-                                tension: {
-                                    duration: 1000,
-                                    easing: 'easeInOutQuad',
-                                    from: 1,
-                                    to: 0.3,
-                                    loop: false
-                                }
-                            },
-                            interaction: {
-                                mode: 'index',
-                                intersect: false,
-                            },
-                            scales: {
-                                y: {
-                                    beginAtZero: true,
-                                    ticks: {
-                                        stepSize: 1
-                                    }
-                                }
-                            },
-                        },
-                        
-                    });
-
-                    const modal = new bootstrap.Modal(document.getElementById('modalGrafico'));
-                    modal.show();
                 });
-        });
+
+                const modal = new bootstrap.Modal(
+                    document.getElementById('modalGrafico')
+                );
+                modal.show();
+            });
     });
+});
 </script>
+
 
 <?php include 'includes/footer.php'; ?>

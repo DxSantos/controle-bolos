@@ -1,48 +1,62 @@
 <?php
 require 'config.php';
 
-$produto_id = $_GET['produto_id'] ?? 0;
+$produto_id   = $_GET['produto_id'] ?? 0;
+$data_inicio  = $_GET['data_inicio'] ?? null;
+$data_fim     = $_GET['data_fim'] ?? null;
+
+$whereData = '';
+$params = [$produto_id];
+
+if ($data_inicio && $data_fim) {
+    $whereData = " AND DATE(data) BETWEEN ? AND ?";
+    $params[] = $data_inicio;
+    $params[] = $data_fim;
+} elseif ($data_inicio) {
+    $whereData = " AND DATE(data) >= ?";
+    $params[] = $data_inicio;
+} elseif ($data_fim) {
+    $whereData = " AND DATE(data) <= ?";
+    $params[] = $data_fim;
+}
 
 /* ENTRADAS */
-$entradas = $pdo->prepare("
-    SELECT DATE(data) as d, SUM(quantidade) total
+$stmtE = $pdo->prepare("
+    SELECT DATE(data) d, SUM(quantidade) total
     FROM controle_entrada
-    WHERE produto_id = ?
+    WHERE produto_id = ? $whereData
     GROUP BY DATE(data)
 ");
-$entradas->execute([$produto_id]);
+$stmtE->execute($params);
 
 /* SAÍDAS */
-$saidas = $pdo->prepare("
-    SELECT DATE(data) as d, SUM(quantidade) total
+$stmtS = $pdo->prepare("
+    SELECT DATE(data) d, SUM(quantidade) total
     FROM controle_saida
-    WHERE produto_id = ?
+    WHERE produto_id = ? $whereData
     GROUP BY DATE(data)
 ");
-$saidas->execute([$produto_id]);
+$stmtS->execute($params);
 
 $map = [];
 
-foreach ($entradas as $e) {
-    $map[$e['d']]['entrada'] = $e['total'];
+foreach ($stmtE as $e) {
+    $map[$e['d']]['entrada'] = (int)$e['total'];
 }
-foreach ($saidas as $s) {
-    $map[$s['d']]['saida'] = $s['total'];
+foreach ($stmtS as $s) {
+    $map[$s['d']]['saida'] = (int)$s['total'];
 }
 
 ksort($map);
 
-//DATAS FORMATADAS PARA EXIBIÇÃO NO GRÁFICO
+//formatar data para o formato brasileiro
 $map = array_combine(
     array_map(fn($d) => date('d/m/Y', strtotime($d)), array_keys($map)),
     $map
 );
 
-$response = [
+echo json_encode([
     'datas'    => array_keys($map),
     'entradas' => array_map(fn($v) => $v['entrada'] ?? 0, $map),
     'saidas'   => array_map(fn($v) => $v['saida'] ?? 0, $map),
-];
-
-header('Content-Type: application/json');
-echo json_encode($response);
+]);
