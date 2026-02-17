@@ -144,6 +144,7 @@ $movimentos = $stmt->fetchAll(PDO::FETCH_ASSOC);
     </form>
 
     <!-- 📋 TABELA -->
+     
     <div class="table-responsive">
         <table class="table table-striped table-hover">
             <thead class="table-dark">

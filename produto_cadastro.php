@@ -30,7 +30,14 @@ if (!empty($_SESSION['msg'])) {
 
 // ----- EDITAR REGISTRO -----
 $edit = false;
-$produto = ['id' => '', 'nome' => '', 'tipo' => ''];
+$produto = [
+    'id' => '',
+    'nome' => '',
+    'tipo_id' => '',
+    'subtipo_id' => '',
+    'quantidade_minima' => 0
+];
+
 
 if (isset($_GET['editar'])) {
     $id = (int) $_GET['editar'];
@@ -66,6 +73,7 @@ $busca = isset($_GET['busca']) ? strtoupper(trim($_GET['busca'])) : '';
 $sql = "SELECT 
     p.id,
     p.nome,
+    p.quantidade_minima,
     t.nome AS tipo_nome,
     s.nome AS subtipo_nome
 FROM produtos p
@@ -75,6 +83,7 @@ WHERE UPPER(p.nome) LIKE :busca
    OR UPPER(t.nome) LIKE :busca
    OR UPPER(s.nome) LIKE :busca
 ORDER BY p.id DESC";
+
 $stmt = $pdo->prepare($sql);
 $stmt->execute(['busca' => "%$busca%"]);
 $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -258,6 +267,17 @@ $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 </select>
             </div>
 
+            <div class="mb-3">
+                <label class="form-label">Estoque Mínimo:</label>
+                <input type="number"
+                    name="quantidade_minima"
+                    min="0"
+                    required
+                    class="form-control"
+                    value="<?= htmlspecialchars($produto['quantidade_minima'] ?? 0) ?>">
+            </div>
+
+
             <div class="d-flex gap-2">
                 <button type="submit" class="btn btn-success"><?= $edit ? 'Atualizar' : 'Salvar' ?></button>
                 <?php if ($edit): ?>
@@ -286,6 +306,8 @@ $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <th>Nome</th>
                             <th>Tipo</th>
                             <th>Subtipo</th>
+                            <th>Mínimo</th>
+
                             <th style="width:150px">Ações</th>
                         </tr>
                     </thead>
@@ -297,6 +319,7 @@ $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                     <td><?= htmlspecialchars($row['nome']) ?></td>
                                     <td><?= htmlspecialchars($row['tipo_nome']) ?></td>
                                     <td><?= htmlspecialchars($row['subtipo_nome'] ?? '-') ?></td>
+                                    <td><?= $row['quantidade_minima'] ?></td>
 
                                     <td>
                                         <a href="?editar=<?= $row['id'] ?>" class="btn btn-sm btn-warning">✏️</a>
@@ -316,7 +339,7 @@ $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
     </div>
     <script>
-        document.getElementById('tipo').addEventListener('change', async function() {
+        document.getElementById('tipo_id').addEventListener('change', async function() {
             const tipo = this.value;
             const subtipoSelect = document.getElementById('subtipo_id');
 

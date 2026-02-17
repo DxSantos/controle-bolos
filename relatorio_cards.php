@@ -20,22 +20,22 @@ $tipos = $pdo->query("
 
     <form id="filtroDatas" class="row g-2 mb-4">
 
-    <div class="col-md-3">
-        <label class="form-label">Data inicial</label>
-        <input type="date" id="data_inicio" class="form-control">
-    </div>
+        <div class="col-md-3">
+            <label class="form-label">Data inicial</label>
+            <input type="date" id="data_inicio" class="form-control">
+        </div>
 
-    <div class="col-md-3">
-        <label class="form-label">Data final</label>
-        <input type="date" id="data_fim" class="form-control">
-    </div>
+        <div class="col-md-3">
+            <label class="form-label">Data final</label>
+            <input type="date" id="data_fim" class="form-control">
+        </div>
 
-    <div class="col-md-3 d-flex align-items-end">
-        <button type="button" class="btn btn-secondary w-100"
-            onclick="limparDatas()">Limpar datas</button>
-    </div>
+        <div class="col-md-3 d-flex align-items-end">
+            <button type="button" class="btn btn-secondary w-100"
+                onclick="limparDatas()">Limpar datas</button>
+        </div>
 
-</form>
+    </form>
 
 
     <div class="row g-3">
@@ -95,7 +95,7 @@ $tipos = $pdo->query("
             </div>
 
             <div class="modal-body">
-                <canvas id="graficoProduto" height="150" ></canvas>
+                <canvas id="graficoProduto" height="150"></canvas>
             </div>
 
         </div>
@@ -103,77 +103,90 @@ $tipos = $pdo->query("
 </div>
 
 <script>
-let chart = null;
+    let chart = null;
 
-function limparDatas() {
-    document.getElementById('data_inicio').value = '';
-    document.getElementById('data_fim').value = '';
-}
+    function limparDatas() {
+        document.getElementById('data_inicio').value = '';
+        document.getElementById('data_fim').value = '';
+    }
 
-document.querySelectorAll('.produto-item').forEach(item => {
-    item.addEventListener('click', () => {
+    document.querySelectorAll('.produto-item').forEach(item => {
+        item.addEventListener('click', () => {
 
-        const produtoId = item.dataset.id;
-        const nome = item.dataset.nome;
+            const produtoId = item.dataset.id;
+            const nome = item.dataset.nome;
 
-        const dataInicio = document.getElementById('data_inicio').value;
-        const dataFim = document.getElementById('data_fim').value;
+            const dataInicio = document.getElementById('data_inicio').value;
+            const dataFim = document.getElementById('data_fim').value;
 
-        document.getElementById('tituloProduto').innerText = nome;
+            document.getElementById('tituloProduto').innerText = nome;
 
-        let url = `dados_grafico_produto.php?produto_id=${produtoId}`;
+            let url = `dados_grafico_produto.php?produto_id=${produtoId}`;
 
-        if (dataInicio) url += `&data_inicio=${dataInicio}`;
-        if (dataFim) url += `&data_fim=${dataFim}`;
+            if (dataInicio) url += `&data_inicio=${dataInicio}`;
+            if (dataFim) url += `&data_fim=${dataFim}`;
 
-        fetch(url)
-            .then(res => res.json())
-            .then(dados => {
+            fetch(url)
+                .then(res => res.json())
+                .then(dados => {
 
-                const ctx = document.getElementById('graficoProduto').getContext('2d');
+                    const ctx = document.getElementById('graficoProduto').getContext('2d');
 
-                if (chart) chart.destroy();
+                    if (chart) chart.destroy();
 
-                chart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: dados.datas,
-                        datasets: [
-                            {
-                                label: 'Entradas',
-                                data: dados.entradas,
-                                borderColor: 'blue',
-                                tension: 0.3
-                            },
-                            {
-                                label: 'Saídas',
-                                data: dados.saidas,
-                                borderColor: 'red',
-                                tension: 0.3
-                            }
-                        ]
-                    },
-                    options: {
-                        interaction: {
-                            mode: 'index',
-                            intersect: false
+                    chart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: dados.datas,
+                            datasets: [{
+                                    label: 'Entradas',
+                                    data: dados.entradas,
+                                    borderColor: 'blue',
+                                    backgroundColor: 'blue',
+                                    tension: 0.3
+                                },
+                                {
+                                    label: 'Saídas',
+                                    data: dados.saidas,
+                                    borderColor: 'red',
+                                    backgroundColor: 'red',
+                                    tension: 0.3
+                                }
+                            ]
                         },
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                ticks: { stepSize: 1 }
+                        options: {
+                            animations: {
+                                radius: {
+                                    duration: 400,
+                                    easing: 'linear',
+                                    loop: (context) => context.active
+                                }
+                            },
+                            hoverRadius: 12,
+                            hoverBackgroundColor: 'yellow',
+
+                            interaction: {
+                                mode: 'index',
+                                intersect: false
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        stepSize: 1
+                                    }
+                                }
                             }
                         }
-                    }
-                });
+                    });
 
-                const modal = new bootstrap.Modal(
-                    document.getElementById('modalGrafico')
-                );
-                modal.show();
-            });
+                    const modal = new bootstrap.Modal(
+                        document.getElementById('modalGrafico')
+                    );
+                    modal.show();
+                });
+        });
     });
-});
 </script>
 
 
