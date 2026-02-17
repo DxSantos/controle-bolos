@@ -1,0 +1,5 @@
+<!-- 
+RewriteEngine On
+RewriteCond %{HTTP_HOST} !^www\.
+RewriteRule ^(.*)$ http://www.dlmultiapps.com/controle_bolos/$1 [R=301,L]
+-->

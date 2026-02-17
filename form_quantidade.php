@@ -45,7 +45,7 @@ foreach ($tipos as $tipo) {
 
 ?>
 
-<?php require 'includes/header.php'; ?>
+
 
 <body>
 
@@ -274,7 +274,6 @@ uksort($subtipos, function ($a, $b) use ($ordemPadrao) {
 
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
 
@@ -372,25 +371,35 @@ uksort($subtipos, function ($a, $b) use ($ordemPadrao) {
 
             // ================= RESUMO =================
             function montarResumo(valores) {
-                resumoBody.innerHTML = '';
+    resumoBody.innerHTML = '';
 
-                for (const id in valores) {
+    for (const id in valores) {
 
-                    const input = document.querySelector(`input[name="quantidade[${id}]"]`);
-                    if (!input) continue;
+        const input = document.querySelector(`input[name="quantidade[${id}]"]`);
+        if (!input) continue;
 
-                    // Pega o nome do produto pela primeira coluna da linha
-                    const linha = input.closest('tr');
-                    const nomeProduto = linha.querySelector('td').innerText.trim();
+        const td = input.closest('td');
+        const tr = input.closest('tr');
 
-                    resumoBody.innerHTML += `
+        // Nome do produto (primeira coluna da linha)
+        const nomeProduto = tr.querySelector('td').innerText.trim();
+
+        // Descobrir índice da coluna
+        const colIndex = Array.from(tr.children).indexOf(td);
+
+        // Pegar nome do subtipo no THEAD
+        const tabela = tr.closest('table');
+        const subtipo = tabela.querySelectorAll('thead th')[colIndex].innerText.trim();
+
+        resumoBody.innerHTML += `
             <tr>
-                <td>${nomeProduto}</td>
+                <td>${nomeProduto} - <strong>${subtipo}</strong></td>
                 <td>${valores[id]}</td>
             </tr>
         `;
-                }
-            }
+    }
+}
+
 
 
             // ================= CARREGAR =================
@@ -467,7 +476,5 @@ uksort($subtipos, function ($a, $b) use ($ordemPadrao) {
 
 
 </body>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
 <?php include 'includes/footer.php'; ?>

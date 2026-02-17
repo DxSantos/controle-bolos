@@ -2,7 +2,8 @@
 <div style="height:50px;"></div>
 <footer class="bg-dark text-white text-center  py-2 mt-5">
 
-    <a href='https://ibb.co/RkKKKDmv'><img style="height: 30px;" src='https://i.ibb.co/RkKKKDmv/dl-apps-logo.png' alt='dl-apps-logo' border='0'></a>
+    
+<img style="height: 30px;" src='assets/images/icons/android-chrome-512x512.png' alt='dl-apps-logo'>
 
     <small>&copy; <?php echo date('Y'); ?> - Controle de Estoque - Lojas | Desenvolvido por Adelmo Santos</small>
 </footer>
