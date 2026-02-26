@@ -1,3 +1,8 @@
+<?php
+
+$tipoSelecionado = $_GET['tipo'] ?? 'TORTA RECHEADA';
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -10,48 +15,12 @@
     <title>Relatório de Torta Recheada</title>
 </head>
 
-<body>
+<body style="padding: 10px;">
     <?php
     require 'config.php';
     require 'includes/verifica_permissao.php';
 
-    // include 'includes/header.php';
 
-    // if (session_status() === PHP_SESSION_NONE) {
-    //     session_start();
-    // }
-
-    // if (empty($_SESSION['usuario_id'])) {
-    //     header('Location: login.php');
-    //     exit;
-    // }
-
-    // if (!verificaPermissao('analitico')) {
-    //     echo "<div class='alert alert-danger m-4 text-center'>🚫 Sem permissão.</div>";
-    //     include 'includes/footer.php';
-    //     exit;
-    // }
-
-    // ================= FILTROS ================= */
-    $sql = "
-SELECT
-    p.id,
-    p.nome AS produto,
-    s.nome AS subtipo,
-    COALESCE(sp.saldo,0) AS saldo,
-    p.quantidade_minima
-FROM produtos p
-JOIN tipos t ON t.id = p.tipo_id
-LEFT JOIN subtipos s ON s.id = p.subtipo_id
-LEFT JOIN saldo_produtos sp ON sp.produto_id = p.id
-WHERE t.nome = 'TORTA RECHEADA'
-ORDER BY p.nome, s.nome
-";
-
-
-    /*
-BUSCA SOMENTE TORTA RECHEADA
-*/
     $sql = "
 SELECT
     p.nome AS produto,
@@ -62,23 +31,13 @@ FROM produtos p
 JOIN tipos t ON t.id = p.tipo_id 
 LEFT JOIN subtipos s ON s.id = p.subtipo_id
 LEFT JOIN saldo_produtos sp ON sp.produto_id = p.id
-WHERE t.nome = 'TORTA RECHEADA'
+WHERE t.nome = :tipo
 ORDER BY p.nome, s.nome
 ";
 
-    $stmt = $pdo->query($sql);
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([':tipo' => $tipoSelecionado]);
     $dados = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    // echo "<pre>"; // DEBUG
-    // print_r($dados);    
-    // echo "</pre>"; // DEBUG
-
-    if (!$dados) {
-        echo "<div class='alert alert-info m-4 text-center'>
-            Nenhum dado encontrado para TORTA RECHEADA.
-          </div>";
-        include 'includes/footer.php';
-        exit;
-    }
 
     /*
 ORGANIZA:
@@ -164,24 +123,57 @@ Produto
         }
     </style>
 
-    <div class="container py-4">
+    <div class="container py-3">
 
-        <h3 class="mb-4">📊 Estoque - Torta Recheada</h3>
+        <h3 class="mb-4">📊 Estoque - <?= htmlspecialchars($tipoSelecionado) ?></h3>
 
-        <?php if ($alertas > 0): ?>
-            <div class="alert alert-danger d-flex align-items-center mb-4">
-                <i class="bi bi-exclamation-triangle-fill fs-4 me-2"></i>
-                <div>
-                    <strong>Atenção!</strong> <?= $alertas ?> produto(s) estão abaixo do estoque mínimo.
+        <?php
+        $tipoSelecionado = $_GET['tipo'] ?? 'TORTA RECHEADA';
+        ?>
+
+        <form method="GET" class="mb-2 p-3 bg-white rounded shadow-sm">
+
+            <div class="row">
+
+                <div class="d-flex justify-content-center align-items-center gap-5">
+                    <label class="form-label">Tipo</label>
+
+                    <select name="tipo" class="form-select" style="width: 30%; " onchange="this.form.submit()">
+
+                        <option value="TORTA RECHEADA"
+                            <?= $tipoSelecionado == 'TORTA RECHEADA' ? 'selected' : '' ?>>
+                            Torta Recheada
+                        </option>
+
+                        <option value="MASSA PARA TORTA"
+                            <?= $tipoSelecionado == 'MASSA PARA TORTA' ? 'selected' : '' ?>>
+                            Massa para Torta
+                        </option>
+
+                    </select>
+
+                    <?php if ($alertas > 0): ?>
+                        <div class="alert alert-danger d-flex align-items-center mb-2">
+                            <i class="bi bi-exclamation-triangle-fill fs-4 me-2"></i>
+                            <div>
+                                <strong>Atenção!</strong> <?= $alertas ?> produto(s) estão abaixo do estoque mínimo.
+                            </div>
+                        </div>
+                    <?php endif; ?>
+
                 </div>
+
             </div>
-        <?php endif; ?>
+
+        </form>
+
+
 
 
         <div class="card card-rel">
 
             <div class="card-header bg-primary text-white">
-                TORTA RECHEADA
+                <?= htmlspecialchars($tipoSelecionado) ?>
             </div>
 
             <div class="card-body p-0">

@@ -111,41 +111,41 @@ foreach ($tipos as $tipo) {
                                 $produtos = $produtos_por_tipo[$tipo['id']] ?? [];
 
                                 $dados = [];
-$subtipos = [];
+                                $subtipos = [];
 
-// Monta estrutura
-foreach ($produtos as $p) {
+                                // Monta estrutura
+                                foreach ($produtos as $p) {
 
-    $subtipo = 'SEM SUBTIPO';
+                                    $subtipo = 'SEM SUBTIPO';
 
-    if (!empty($p['subtipo_id'])) {
-        $st = $pdo->prepare("SELECT nome FROM subtipos WHERE id=?");
-        $st->execute([$p['subtipo_id']]);
-        $subtipo = $st->fetchColumn() ?: 'SEM SUBTIPO';
-    }
+                                    if (!empty($p['subtipo_id'])) {
+                                        $st = $pdo->prepare("SELECT nome FROM subtipos WHERE id=?");
+                                        $st->execute([$p['subtipo_id']]);
+                                        $subtipo = $st->fetchColumn() ?: 'SEM SUBTIPO';
+                                    }
 
-    // Guarda subtipo existente
-    $subtipos[$subtipo] = true;
+                                    // Guarda subtipo existente
+                                    $subtipos[$subtipo] = true;
 
-    // Agrupa produto
-    $dados[$p['nome']][$subtipo] = [
-        'id' => $p['id']
-    ];
-}
+                                    // Agrupa produto
+                                    $dados[$p['nome']][$subtipo] = [
+                                        'id' => $p['id']
+                                    ];
+                                }
 
-// Ordem desejada
-$ordemPadrao = ['MINI', 'P', 'M', 'G', 'SEM SUBTIPO'];
+                                // Ordem desejada
+                                $ordemPadrao = ['MINI', 'P', 'M', 'G', 'SEM SUBTIPO'];
 
-uksort($subtipos, function ($a, $b) use ($ordemPadrao) {
+                                uksort($subtipos, function ($a, $b) use ($ordemPadrao) {
 
-    $pa = array_search($a, $ordemPadrao);
-    $pb = array_search($b, $ordemPadrao);
+                                    $pa = array_search($a, $ordemPadrao);
+                                    $pb = array_search($b, $ordemPadrao);
 
-    if ($pa === false) return 1;
-    if ($pb === false) return -1;
+                                    if ($pa === false) return 1;
+                                    if ($pb === false) return -1;
 
-    return $pa <=> $pb;
-});
+                                    return $pa <=> $pb;
+                                });
 
 
                                 if ($dados):
@@ -205,51 +205,54 @@ uksort($subtipos, function ($a, $b) use ($ordemPadrao) {
 
                                         <tbody>
 
-<?php foreach ($dados as $produtoNome => $subs): ?>
-<tr>
+                                            <?php foreach ($dados as $produtoNome => $subs): ?>
+                                                <tr>
 
-    <td><strong><?= htmlspecialchars($produtoNome) ?></strong></td>
+                                                    <td><strong><?= htmlspecialchars($produtoNome) ?></strong></td>
 
-    <?php foreach ($subtipos as $subtipo => $x): ?>
-        <td class="text-center">
+                                                    <?php foreach ($subtipos as $subtipo => $x): ?>
+                                                        <td class="text-center">
 
-            <?php if (isset($subs[$subtipo])):
+                                                            <?php if (isset($subs[$subtipo])):
 
-                $pid = $subs[$subtipo]['id'];
+                                                                $pid = $subs[$subtipo]['id'];
 
-                $stSaldo = $pdo->prepare(
-                    "SELECT saldo FROM saldo_produtos WHERE produto_id=?"
-                );
-                $stSaldo->execute([$pid]);
-                $saldo = $stSaldo->fetchColumn() ?? 0;
-            ?>
+                                                                $stSaldo = $pdo->prepare(
+                                                                    "SELECT saldo FROM saldo_produtos WHERE produto_id=?"
+                                                                );
+                                                                $stSaldo->execute([$pid]);
+                                                                $saldo = $stSaldo->fetchColumn() ?? 0;
+                                                            ?>
 
-                <small class="text-muted">Saldo: <?= $saldo ?></small>
+                                                                <small class="text-muted">Saldo: <?= $saldo ?></small>
 
-                <div class="quantidade-control">
+                                                                <div class="quantidade-control d-flex align-items-center justify-content-center gap-1 mt-1">
 
-                    <button type="button" class="btn btn-outline-secondary btn-minus">-</button>
+                                                                    <button type="button" class="btn btn-outline-secondary btn-minus">-</button>
 
-                    <input type="number"
-                           name="quantidade[<?= $pid ?>]"
-                           value="0"
-                           min="0">
+                                                                    <input type="number"
+                                                                        name="quantidade[<?= $pid ?>]"
+                                                                        value="0"
+                                                                        min="0"
+                                                                        
+                                                                        data-saldo="<?= $saldo ?>">
 
-                    <button type="button" class="btn btn-outline-secondary btn-plus">+</button>
 
-                </div>
+                                                                    <button type="button" class="btn btn-outline-secondary btn-plus">+</button>
 
-            <?php else: ?>
-                <!-- célula vazia -->
-            <?php endif; ?>
+                                                                </div>
 
-        </td>
-    <?php endforeach; ?>
+                                                            <?php else: ?>
+                                                                <!-- célula vazia -->
+                                                            <?php endif; ?>
 
-</tr>
-<?php endforeach; ?>
+                                                        </td>
+                                                    <?php endforeach; ?>
 
-</tbody>
+                                                </tr>
+                                            <?php endforeach; ?>
+
+                                        </tbody>
 
 
                                     </table>
@@ -298,6 +301,7 @@ uksort($subtipos, function ($a, $b) use ($ordemPadrao) {
             }
 
             atualizarCores();
+            atualizarLimitesInputs();
             await carregarValoresGuardados(tipoAtual);
 
             // ================= MODOS =================
@@ -310,24 +314,80 @@ uksort($subtipos, function ($a, $b) use ($ordemPadrao) {
                     tipoRegistroInput.value = tipoAtual;
 
                     atualizarCores();
+                    atualizarLimitesInputs();
                     await carregarValoresGuardados(tipoAtual);
                 });
             });
 
+            function atualizarLimitesInputs() {
+
+    document.querySelectorAll('input[name^="quantidade"]').forEach(input => {
+
+        const saldo = parseInt(input.dataset.saldo || 0);
+
+        if (tipoAtual === 'saida') {
+            input.setAttribute('max', saldo);
+        } else {
+            input.removeAttribute('max'); // entrada não tem limite
+        }
+
+    });
+
+}
+
+
             // ================= + / - =================
             document.querySelectorAll('.btn-plus').forEach(btn => {
                 btn.onclick = () => {
+
                     const input = btn.previousElementSibling;
-                    input.value = parseInt(input.value || 0) + 1;
+                    let valorAtual = parseInt(input.value || 0);
+                    const saldo = parseInt(input.dataset.saldo || 0);
+
+                    if (tipoAtual === 'saida') {
+                        if (valorAtual < saldo) {
+                            input.value = valorAtual + 1;
+                        }
+                    } else {
+                        input.value = valorAtual + 1;
+                    }
                 };
             });
 
             document.querySelectorAll('.btn-minus').forEach(btn => {
                 btn.onclick = () => {
+
                     const input = btn.nextElementSibling;
-                    input.value = Math.max(0, parseInt(input.value || 0) - 1);
+                    let valorAtual = parseInt(input.value || 0);
+
+                    input.value = Math.max(0, valorAtual - 1);
                 };
             });
+
+            // ================= BLOQUEAR DIGITAÇÃO ACIMA DO SALDO =================
+            document.querySelectorAll('input[name^="quantidade"]').forEach(input => {
+
+                input.addEventListener('input', () => {
+
+                    let valor = parseInt(input.value || 0);
+                    const saldo = parseInt(input.dataset.saldo || 0);
+
+                    if (tipoAtual === 'saida') {
+
+                        if (valor > saldo) {
+                            input.value = saldo;
+                        }
+
+                    }
+
+                    if (valor < 0) {
+                        input.value = 0;
+                    }
+
+                });
+
+            });
+
 
             // ================= COLETAR =================
             function coletarValoresDaTela() {
@@ -371,34 +431,34 @@ uksort($subtipos, function ($a, $b) use ($ordemPadrao) {
 
             // ================= RESUMO =================
             function montarResumo(valores) {
-    resumoBody.innerHTML = '';
+                resumoBody.innerHTML = '';
 
-    for (const id in valores) {
+                for (const id in valores) {
 
-        const input = document.querySelector(`input[name="quantidade[${id}]"]`);
-        if (!input) continue;
+                    const input = document.querySelector(`input[name="quantidade[${id}]"]`);
+                    if (!input) continue;
 
-        const td = input.closest('td');
-        const tr = input.closest('tr');
+                    const td = input.closest('td');
+                    const tr = input.closest('tr');
 
-        // Nome do produto (primeira coluna da linha)
-        const nomeProduto = tr.querySelector('td').innerText.trim();
+                    // Nome do produto (primeira coluna da linha)
+                    const nomeProduto = tr.querySelector('td').innerText.trim();
 
-        // Descobrir índice da coluna
-        const colIndex = Array.from(tr.children).indexOf(td);
+                    // Descobrir índice da coluna
+                    const colIndex = Array.from(tr.children).indexOf(td);
 
-        // Pegar nome do subtipo no THEAD
-        const tabela = tr.closest('table');
-        const subtipo = tabela.querySelectorAll('thead th')[colIndex].innerText.trim();
+                    // Pegar nome do subtipo no THEAD
+                    const tabela = tr.closest('table');
+                    const subtipo = tabela.querySelectorAll('thead th')[colIndex].innerText.trim();
 
-        resumoBody.innerHTML += `
+                    resumoBody.innerHTML += `
             <tr>
                 <td>${nomeProduto} - <strong>${subtipo}</strong></td>
                 <td>${valores[id]}</td>
             </tr>
         `;
-    }
-}
+                }
+            }
 
 
 

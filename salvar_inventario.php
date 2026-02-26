@@ -1,4 +1,6 @@
 <?php
+date_default_timezone_set('America/Sao_Paulo');
+
 require 'config.php';
 require 'includes/funcoes_estoque.php';
 
@@ -14,6 +16,9 @@ $novoInventario = $_POST['saldo_inventario'] ?? [];
 if (!$codigo || !is_array($novoInventario)) {
     die('Dados inválidos');
 }
+
+$dataAtual = date('Y-m-d H:i:s');
+
 
 try {
     $pdo->beginTransaction();
@@ -32,7 +37,7 @@ try {
         INSERT INTO inventario_log
             (codigo_inventario, produto_id, saldo_anterior, saldo_inventario, data_inventario)
         VALUES
-            (:codigo, :produto, :saldo_anterior, :saldo_inventario, NOW())
+            (:codigo, :produto, :saldo_anterior, :saldo_inventario, :data)
     ");
 
     // 3️⃣ Atualizar / inserir inventário base
@@ -40,7 +45,7 @@ try {
         INSERT INTO saldo_produtos
             (produto_id, inventario, data_ultimo_inventario)
         VALUES
-            (:produto, :inventario, NOW())
+            (:produto, :inventario, :data)
         ON DUPLICATE KEY UPDATE
             inventario = VALUES(inventario),
             data_ultimo_inventario = VALUES(data_ultimo_inventario)
@@ -68,13 +73,15 @@ try {
             ':codigo'           => $codigo,
             ':produto'          => $produto_id,
             ':saldo_anterior'   => $saldoAnterior,
-            ':saldo_inventario' => $saldo_novo
+            ':saldo_inventario' => $saldo_novo,
+            ':data'             => $dataAtual
         ]);
 
         // Atualiza inventário base
         $stmtSaldo->execute([
             ':produto'    => $produto_id,
-            ':inventario' => $saldo_novo
+            ':inventario' => $saldo_novo,
+            ':data'      => $dataAtual
         ]);
 
         // 🔥 Recalcula entradas, saídas e saldo final
