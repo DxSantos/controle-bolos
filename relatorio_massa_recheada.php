@@ -39,6 +39,44 @@ ORDER BY p.nome, s.nome
     $stmt->execute([':tipo' => $tipoSelecionado]);
     $dados = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+    // consulta para obter a última data de atualização do estoque do tipo selecionado
+    $sqlUltimaAtualizacao = "
+SELECT MAX(data_atualizacao) AS ultima_data
+FROM (
+
+    SELECT MAX(ce.data) AS data_atualizacao
+    FROM controle_entrada ce
+    INNER JOIN produtos p ON p.id = ce.produto_id
+    INNER JOIN tipos t ON t.id = p.tipo_id
+    WHERE t.nome = :tipo
+
+    UNION ALL
+
+    SELECT MAX(cs.data) AS data_atualizacao
+    FROM controle_saida cs
+    INNER JOIN produtos p ON p.id = cs.produto_id
+    INNER JOIN tipos t ON t.id = p.tipo_id
+    WHERE t.nome = :tipo
+
+    UNION ALL
+
+    SELECT MAX(il.data_inventario) AS data_atualizacao
+    FROM inventario_log il
+    INNER JOIN produtos p ON p.id = il.produto_id
+    INNER JOIN tipos t ON t.id = p.tipo_id
+    WHERE t.nome = :tipo
+
+) x
+";
+
+$stmtData = $pdo->prepare($sqlUltimaAtualizacao);
+$stmtData->execute([':tipo' => $tipoSelecionado]);
+$ultimaAtualizacao = $stmtData->fetchColumn();
+
+$ultimaAtualizacaoFormatada = $ultimaAtualizacao
+    ? date('d/m/Y H:i', strtotime($ultimaAtualizacao))
+    : 'Sem movimentação';
+
     /*
 ORGANIZA:
 Produto
@@ -152,14 +190,27 @@ Produto
 
                     </select>
 
-                    <?php if ($alertas > 0): ?>
-                        <div class="alert alert-danger d-flex align-items-center mb-2">
-                            <i class="bi bi-exclamation-triangle-fill fs-4 me-2"></i>
-                            <div>
-                                <strong>Atenção!</strong> <?= $alertas ?> produto(s) estão abaixo do estoque mínimo.
-                            </div>
-                        </div>
-                    <?php endif; ?>
+                    <div class="d-flex align-items-center gap-3">
+
+    <?php if ($alertas > 0): ?>
+        <div class="alert alert-danger d-flex align-items-center mb-0">
+            <i class="bi bi-exclamation-triangle-fill fs-4 me-2"></i>
+            <div>
+                <strong>Atenção!</strong>
+                <?= $alertas ?> produto(s) estão abaixo do estoque mínimo.
+            </div>
+        </div>
+    <?php endif; ?>
+
+    <div class="alert alert-info d-flex align-items-center mb-0">
+        <i class="bi bi-clock-history fs-5 me-2"></i>
+        <div>
+            <strong>Última atualização:</strong><br>
+            <?= $ultimaAtualizacaoFormatada ?>
+        </div>
+    </div>
+
+</div>
 
                 </div>
 
